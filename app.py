@@ -54,3 +54,23 @@ st.plotly_chart(fig2, use_container_width=True)
 st.subheader("Andmed")
 
 st.dataframe(df.head(20), use_container_width=True)
+
+st.header(" Fotode kaart")
+
+sheet_id = "1GykaR1SEL2AmzUuXZadVmiL3kpM_MEf2"
+gid_map = "895258900"
+
+url_map = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid_map}"
+
+df_map = pd.read_csv(url_map)
+
+df_map.columns = df_map.columns.str.strip()
+
+map_data = df_map[["Latitude", "Longitude"]].dropna()
+
+map_data = map_data.rename(columns={
+    "Latitude": "lat",
+    "Longitude": "lon"
+})
+
+st.map(map_data)
