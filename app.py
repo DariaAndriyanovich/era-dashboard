@@ -23,6 +23,7 @@ df["Aasta"] = df["Aasta"].astype(int)
     #### SIDE BAR ###
 st.sidebar.header("Filtrid")
 
+# AASTA SIDEBAR
 year_range = st.sidebar.slider(
     "Aasta",
     int(df["Aasta"].min()),
@@ -32,6 +33,7 @@ year_range = st.sidebar.slider(
 
 df = df[(df["Aasta"] >= year_range[0]) & (df["Aasta"] <= year_range[1])]
 
+# KIHELKOND SIDEBAR
 selected = st.sidebar.multiselect(
     "Kihelkond",
     sorted(df["Kihelkond"].dropna().unique())
@@ -40,7 +42,8 @@ selected = st.sidebar.multiselect(
 if selected:
     df = df[df["Kihelkond"].isin(selected)]
 
-selected_places = st.sidebar.multiselect( #ASUKOHT SIDEBAR
+# ASUKOHT SIDEBAR
+selected_places = st.sidebar.multiselect( 
     "Täpne asukoht",
     sorted(df["Koht täpsemalt"].dropna().unique())
 )
@@ -60,10 +63,51 @@ st.plotly_chart(fig, use_container_width=True)
 # KIHELKONDADE JAOTUS
 st.subheader("Top kihelkonnad")
 
-top = df["Kihelkond"].value_counts().head(10).reset_index()
+top = (
+    df["Kihelkond"]
+    .value_counts()
+    .head(10)
+    .reset_index()
+)
+
 top.columns = ["Kihelkond", "Arv"]
-fig2 = px.bar(top, x="Kihelkond", y="Arv")
+
+fig2 = px.bar(
+    top,
+    x="Kihelkond",
+    y="Arv",
+    color="Arv",
+    color_continuous_scale="Blues"
+)
+
+fig2.update_layout(coloraxis_showscale=False)
+
 st.plotly_chart(fig2, use_container_width=True)
+
+# ASUKOHTADE JAOTUS
+st.subheader("Top asukohad")
+
+top_places = (        #
+    df["Koht täpsemalt"]
+    .dropna()
+    .value_counts()
+    .head(10)
+    .reset_index()
+)
+
+top_places.columns = ["Täpne asukoht", "Fotode arv"]
+
+fig3 = px.bar(
+    top_places,
+    x="Täpne asukoht",
+    y="Fotode arv",
+    color="Fotode arv",
+    color_continuous_scale="Greens"
+)
+
+fig3.update_layout(coloraxis_showscale=False)
+
+st.plotly_chart(fig3, use_container_width=True)
 
 # ANDMETE TABEL CSV KUJUL
 st.subheader("Andmed")
@@ -118,7 +162,7 @@ if selected:
 if selected_places:
     df_map = df_map[df_map["Koht täpsemalt"].isin(selected_places)]
 
-# KAART 
+# KAART - ANDMED JA KUJUTUS
 map_counts = (
     df_map
     .groupby(["Latitude", "Longitude", "Kihelkond", "Koht täpsemalt"])
