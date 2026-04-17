@@ -40,6 +40,14 @@ selected = st.sidebar.multiselect(
 if selected:
     df = df[df["Kihelkond"].isin(selected)]
 
+selected_places = st.sidebar.multiselect( #ASUKOHT SIDEBAR
+    "Täpne asukoht",
+    sorted(df["Koht täpsemalt"].dropna().unique())
+)
+
+if selected_places:
+    df = df[df["Koht täpsemalt"].isin(selected_places)]
+
     #### KUJUTATUD ANDMED ###
 
 # FOTODE JAOTUS AJAS
