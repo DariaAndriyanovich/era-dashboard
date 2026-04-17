@@ -75,7 +75,7 @@ top.columns = ["Kihelkond", "Fotode Arv"]
 fig2 = px.bar(
     top,
     x="Kihelkond",
-    y="Arv",
+    y="Fotode Arv",
     color="Arv",
     color_continuous_scale="Blues"
 )
