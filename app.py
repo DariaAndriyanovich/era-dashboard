@@ -58,6 +58,7 @@ if selected:
 selected_places = st.sidebar.multiselect( 
     "Täpne asukoht",
     sorted(df["Koht täpsemalt"].dropna().unique())
+    key="asukoht_filter"
 )
 
 if selected_places:
