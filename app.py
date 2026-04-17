@@ -70,12 +70,12 @@ top = (
     .reset_index()
 )
 
-top.columns = ["Kihelkond", "Fotode Arv"]
+top.columns = ["Kihelkond", "Arv"]
 
 fig2 = px.bar(
     top,
     x="Kihelkond",
-    y="Fotode Arv",
+    y="Arv",
     color="Arv",
     color_continuous_scale="Blues"
 )
