@@ -70,7 +70,7 @@ top = (
     .reset_index()
 )
 
-top.columns = ["Kihelkond", "Arv"]
+top.columns = ["Kihelkond", "Fotode Arv"]
 
 fig2 = px.bar(
     top,
