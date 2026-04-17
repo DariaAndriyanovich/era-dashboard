@@ -23,12 +23,23 @@ df["Aasta"] = df["Aasta"].astype(int)
     #### SIDE BAR ###
 st.sidebar.header("Filtrid")
 
+# FILTRITE EEMALDAMINE
+if st.sidebar.button("Eemalda kõik filtrid"):
+    st.session_state["year_range"] = (
+        int(df["Aasta"].min()),
+        int(df["Aasta"].max())
+    )
+    st.session_state["kihelkond_filter"] = []
+    st.session_state["asukoht_filter"] = []
+    st.rerun()
+
 # AASTA SIDEBAR
 year_range = st.sidebar.slider(
     "Aasta",
     int(df["Aasta"].min()),
     int(df["Aasta"].max()),
-    (int(df["Aasta"].min()), int(df["Aasta"].max()))
+    (int(df["Aasta"].min()), int(df["Aasta"].max())),
+    key="year_range"
 )
 
 df = df[(df["Aasta"] >= year_range[0]) & (df["Aasta"] <= year_range[1])]
@@ -36,7 +47,8 @@ df = df[(df["Aasta"] >= year_range[0]) & (df["Aasta"] <= year_range[1])]
 # KIHELKOND SIDEBAR
 selected = st.sidebar.multiselect(
     "Kihelkond",
-    sorted(df["Kihelkond"].dropna().unique())
+    sorted(df["Kihelkond"].dropna().unique()),
+    key="kihelkond_filter"
 )
 
 if selected:
