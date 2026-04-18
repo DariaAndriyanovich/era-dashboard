@@ -216,6 +216,7 @@ st.dataframe(df.head(20), use_container_width=True)
 #})
 
 #VÕRDLUS KIHELKONDADE VAHEL
+st.markdown("---")
 st.subheader("Võrdlus kahe kihelkonna vahel")
 
 valik = st.multiselect("Vali kuni 2 kihelkonda", df["Kihelkond"].unique())
@@ -231,6 +232,7 @@ if len(valik) == 2:
 
     fig = px.line(comp, x="Aasta", y="Arv", color="Kihelkond")
     st.plotly_chart(fig)
+
 # UUS KAART
 st.markdown("---")
 st.header("Fotode kaart")
