@@ -191,6 +191,93 @@ fig_foto.update_layout(coloraxis_showscale=False)
 st.plotly_chart(fig_foto, use_container_width=True)
 
 
+# MARKSONADE JAOTUS
+
+sheet_id2 = "1GykaR1SEL2AmzUuXZadVmiL3kpM_MEf2"     #andmed
+gid_keywords = "1208398234"
+
+url_keywords = (
+    "https://docs.google.com/spreadsheets/d/"
+    f"{sheet_id2}/export?format=csv&gid={gid_keywords}"
+)
+
+df_keywords = pd.read_csv(url_keywords)
+df_keywords.columns = df_keywords.columns.str.strip()
+
+
+visible_pids = df["PID"].unique()
+
+keywords_filtered = df_keywords[
+    df_keywords["PID"].isin(visible_pids)
+]
+
+
+top_keywords = (        #marksonad
+    keywords_filtered["Märksõna"]
+    .dropna()
+    .value_counts()
+    .head(15)
+    .reset_index()
+)
+
+top_keywords.columns = ["Märksõna", "Fotode arv"]
+
+if top_keywords.empty:
+    st.info("Valitud filtrite korral puuduvad andmed.")
+    st.stop()
+
+st.subheader("Kõige sagedasemad märksõnad")
+
+fig_keywords = px.bar(      #tabel
+    top_keywords,
+    x="Fotode arv",
+    y="Märksõna",
+    orientation="h",
+    color="Fotode arv",
+    color_continuous_scale=[
+    [0.0, "#f2f2f2"],
+    [1.0, "#5a5a5a"]
+]
+
+)
+
+fig_keywords.update_layout(     #tabel - y-axis legendi eemaldamine
+    yaxis_showticklabels=False
+)
+
+fig_keywords.update_traces(     #tabel - sonad
+    text=top_keywords["Märksõna"],
+    textposition="inside",
+    insidetextanchor="middle",
+    textfont=dict(color="black", size=12)
+)
+
+fig_keywords.update_layout( 
+    yaxis_title="",
+    xaxis_title="Fotode arv",
+    yaxis=dict(autorange="reversed"),
+    coloraxis_showscale=False,
+    margin=dict(l=40, r=40, t=40, b=40)
+)
+
+fig_keywords.update_layout(     #tabel - mõõtmed
+    height=300 + len(top_keywords) * 35
+)
+
+fig_keywords.update_layout(     #tabel - kergem lugeda
+    xaxis=dict(
+        showgrid=False,
+        ticks="outside",
+        showline=True,
+        linewidth=1,
+        linecolor="rgba(0,0,0,0.3)"
+    )
+)
+
+
+st.plotly_chart(fig_keywords, use_container_width=True)
+
+
 # ANDMETE TABEL CSV KUJUL
 st.markdown("---")
 st.subheader("Andmed")
