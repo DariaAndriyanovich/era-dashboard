@@ -80,7 +80,37 @@ timeline = df.groupby("Aasta").size().reset_index(name="count")
 fig = px.line(timeline, x="Aasta", y="count")
 st.plotly_chart(fig, use_container_width=True)
 
+#KIHELKONDADE JAOTUS AJAS
 st.markdown("---")
+st.subheader("Kihelkonnad ajas")
+
+top_kihelkonnad_time = (
+    df["Kihelkond"]
+    .dropna()
+    .value_counts()
+    .head(5)
+    .index
+)
+
+df_time = df[df["Kihelkond"].isin(top_kihelkonnad_time)]
+
+df_time_grouped = (
+    df_time
+    .groupby(["Aasta", "Kihelkond"])
+    .size()
+    .reset_index(name="Fotode arv")
+)
+
+fig_time = px.line(
+    df_time_grouped,
+    x="Aasta",
+    y="Fotode arv",
+    color="Kihelkond",
+    markers=True
+)
+
+st.plotly_chart(fig_time, use_container_width=True)
+
 # KIHELKONDADE JAOTUS
 st.subheader("Kõige esindatumad kihelkonnad")
 
