@@ -72,6 +72,7 @@ if selected_places:
 
     #### KUJUTATUD ANDMED ###
 
+st.markdown("---")
 # FOTODE JAOTUS AJAS
 st.subheader("Fotode jaotus ajas")
 
@@ -79,6 +80,7 @@ timeline = df.groupby("Aasta").size().reset_index(name="count")
 fig = px.line(timeline, x="Aasta", y="count")
 st.plotly_chart(fig, use_container_width=True)
 
+st.markdown("---")
 # KIHELKONDADE JAOTUS
 st.subheader("Top kihelkonnad")
 
@@ -103,6 +105,7 @@ fig2.update_layout(coloraxis_showscale=False)
 
 st.plotly_chart(fig2, use_container_width=True)
 
+st.markdown("---")
 # ASUKOHTADE JAOTUS
 st.subheader("Top asukohad")
 
@@ -127,6 +130,8 @@ fig3 = px.bar(
 fig3.update_layout(coloraxis_showscale=False)
 
 st.plotly_chart(fig3, use_container_width=True)
+
+st.markdown("---")
 
 # ANDMETE TABEL CSV KUJUL
 st.subheader("Andmed")
