@@ -300,3 +300,36 @@ st.plotly_chart(fig_map, use_container_width=True)
 st.caption(f"Tabelis fotosid (kokku): {len(df)}")
 st.caption(f"Kaardil fotosid (koordinaatidega): {len(df_map)}")
 
+# ANDMETE KVALITEET
+st.markdown("---")
+st.subheader("Andmete kvaliteet")
+
+total = len(df)
+with_coords = len(df_map)
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Kõik fotod", total)
+col2.metric("Koordinaatidega fotod", with_coords)
+col3.metric("Puuduvad koordinaadid", total - with_coords)
+
+percent = round((with_coords / total) * 100, 1)
+
+st.markdown(f"Kaardil kuvatakse **{percent}%** kõikidest fotodest.")
+
+if percent < 50:
+    st.warning(" Suur osa andmetest ei sisalda koordinaate.")
+else:
+    st.success(" Andmestik sobib hästi kaardipõhiseks analüüsiks.")
+
+# PUUDUVAD ANDMED
+st.markdown("---")
+st.subheader("Puuduvad andmed")
+
+missing = df.isnull().sum().reset_index()
+missing.columns = ["Veerg", "Puuduvaid väärtusi"]
+
+missing = missing[missing["Puuduvaid väärtusi"] > 0]
+missing = missing.sort_values("Puuduvaid väärtusi", ascending=False)
+
+st.dataframe(missing)
