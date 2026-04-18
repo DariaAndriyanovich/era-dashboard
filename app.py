@@ -54,8 +54,14 @@ selected = st.sidebar.multiselect(
 if selected:
     df = df[df["Kihelkond"].isin(selected)]
 
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Fotode arv", len(df))
+col2.metric("Kihelkondi", df["Kihelkond"].nunique())
+col3.metric("Asukohti", df["Koht täpsemalt"].nunique())
+
 # ASUKOHT SIDEBAR
-selected_places = st.sidebar.multiselect( 
+selected_places = st.sidebar.multiselect(
     "Täpne asukoht",
     sorted(df["Koht täpsemalt"].dropna().unique()),
     key="asukoht_filter"
