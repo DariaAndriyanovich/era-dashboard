@@ -82,7 +82,7 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("---")
 # KIHELKONDADE JAOTUS
-st.subheader("Top kihelkonnad")
+st.subheader("Kõige esindatumad kihelkonnad")
 
 top = (
     df["Kihelkond"]
@@ -107,7 +107,7 @@ st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
 # ASUKOHTADE JAOTUS
-st.subheader("Top asukohad")
+st.subheader("Kõige sagedasemad asukohad")
 
 top_places = (        #
     df["Koht täpsemalt"]
