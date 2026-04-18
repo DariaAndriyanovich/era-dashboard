@@ -133,6 +133,7 @@ st.subheader("Andmed")
 
 st.dataframe(df.head(20), use_container_width=True)
 
+st.markdown("---")
 # KAART v1
 #st.header(" Fotode kaart")
 
