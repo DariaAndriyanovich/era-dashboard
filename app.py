@@ -131,7 +131,35 @@ fig3.update_layout(coloraxis_showscale=False)
 
 st.plotly_chart(fig3, use_container_width=True)
 
+#FOTOGRAAFIDE ANALÜÜS
+
 st.markdown("---")
+st.subheader(" Kõige aktiivsemad fotograafid")
+
+df_foto = df.dropna(subset=["Fotograaf (puhastatud)"])
+
+top_fotograafid = (
+    df_foto["Fotograaf (puhastatud)"]
+    .value_counts()
+    .head(10)
+    .reset_index()
+)
+
+top_fotograafid.columns = ["Fotograaf", "Fotode arv"]
+
+fig_foto = px.bar(
+    top_fotograafid,
+    x="Fotograaf",
+    y="Fotode arv",
+    color="Fotode arv",
+    color_continuous_scale="Oranges",
+    title="Top 10 fotograafid fotode arvu järgi"
+)
+
+fig_foto.update_layout(coloraxis_showscale=False)
+
+st.plotly_chart(fig_foto, use_container_width=True)
+
 
 # ANDMETE TABEL CSV KUJUL
 st.subheader("Andmed")
@@ -226,3 +254,4 @@ st.plotly_chart(fig_map, use_container_width=True)
 # KAART - KAARDISTATUD INFO TÄPSUSTUS
 st.caption(f"Tabelis fotosid (kokku): {len(df)}")
 st.caption(f"Kaardil fotosid (koordinaatidega): {len(df_map)}")
+
