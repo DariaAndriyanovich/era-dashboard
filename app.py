@@ -8,8 +8,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 st.title("ERA Photo Archive Dashboard")
 
-sheet_id = "1GykaR1SEL2AmzUuXZadVmiL3kpM_MEf2"
-gid = "153293957"
+sheet_id = "1n6yzjS7mPS9XZgVIe5Ut9CArASeIU0o4"
+gid = "1407199305"
 
 url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
 df = pd.read_csv(url)
@@ -238,7 +238,7 @@ st.markdown("---")
 st.header("Fotode kaart")
 
 
-gid_map = "895258900"
+gid_map = "1813478339"
 
 url_map = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid_map}"
 df_map = pd.read_csv(url_map)
