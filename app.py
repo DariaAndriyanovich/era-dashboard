@@ -215,8 +215,22 @@ st.dataframe(df.head(20), use_container_width=True)
 #    "Longitude": "lon"
 #})
 
-#st.map(map_data)
+#VÕRDLUS KIHELKONDADE VAHEL
+st.subheader("Võrdlus kahe kihelkonna vahel")
 
+valik = st.multiselect("Vali kuni 2 kihelkonda", df["Kihelkond"].unique())
+
+if len(valik) == 2:
+    df_compare = df[df["Kihelkond"].isin(valik)]
+
+    comp = (
+        df_compare.groupby(["Aasta", "Kihelkond"])
+        .size()
+        .reset_index(name="Arv")
+    )
+
+    fig = px.line(comp, x="Aasta", y="Arv", color="Kihelkond")
+    st.plotly_chart(fig)
 # UUS KAART
 st.markdown("---")
 st.header("Fotode kaart")
