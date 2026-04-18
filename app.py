@@ -192,11 +192,10 @@ st.plotly_chart(fig_foto, use_container_width=True)
 
 
 # ANDMETE TABEL CSV KUJUL
+st.markdown("---")
 st.subheader("Andmed")
 
 st.dataframe(df.head(20), use_container_width=True)
-
-st.markdown("---")
 # KAART v1
 #st.header(" Fotode kaart")
 
@@ -219,7 +218,7 @@ st.markdown("---")
 #st.map(map_data)
 
 # UUS KAART
-
+st.markdown("---")
 st.header("Fotode kaart")
 
 
