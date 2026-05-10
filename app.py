@@ -3,8 +3,11 @@ import pandas as pd
 import plotly.express as px
 import ssl
 import json
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+try:
+    from wordcloud import WordCloud
+except:
+    WordCloud = None
 
 ### LEHE STIIL JA SEADISTUSED ###
 st.set_page_config(
@@ -47,22 +50,17 @@ st.markdown("""
 ### TABIDE LOOMINE ###
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-
-     "Ajaline analüüs",
-
+    "Ajaline analüüs",
     "Kaart",
-
     "Märksõnad",
-
     "ML analüüs",
-
     "Andmed"
 
 ])
 
 with tab1:
 
-    ### ANDMED ###
+  ### ANDMED ###
   ssl._create_default_https_context = ssl._create_unverified_context
 
   st.title("ERA Photo Archive Dashboard")
@@ -440,7 +438,7 @@ with tab3:
       "Kõige sagedasem",
       keyword_counts.index[0]
   )
-#WORLDCLOUD
+#WORDCLOUD
   word_freq = keyword_counts.to_dict()
   wc = WordCloud(
         width=1400,
