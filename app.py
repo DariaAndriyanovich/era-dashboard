@@ -1,8 +1,10 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import ssl
 import json
+
 
 ### LEHE STIIL JA SEADISTUSED ###
 st.set_page_config(
@@ -466,29 +468,65 @@ with tab3:
       st.warning("Valitud filtritega sobivaid märksõnu ei leitud.")
       st.stop()
 
-#BUBBLE CHART
-  bubble_df = keyword_counts.reset_index()
-  bubble_df.columns = ["keyword", "count"]
+# KÕIGE SAGEDAMASED 80 MÄRKSÕNA
+  cards_html = """
+  <div style="
+      display:flex;
+      flex-wrap:wrap;
+      gap:14px;
+      width:100%;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:25px;
+      cursor:pointer;
+      transition:0.2s ease;
+  ">
+  """
 
-  fig_bubble = px.scatter(
-      bubble_df,
-      x="keyword",
-      y="count",
-      size="count",
-      color="count",
-      hover_name="keyword",
-      size_max=70,
-      height=700,
-      color_continuous_scale="Teal"
-  )
+  max_count = keyword_counts.max()
 
-  fig_bubble.update_layout(
-      xaxis_title="Märksõna",
-      yaxis_title="Fotode arv",
-      showlegend=False
-  )
+  for word, count in keyword_counts.items():
 
-  st.plotly_chart(fig_bubble, use_container_width=True)
+      size = 14 + (count / max_count) * 16
+      opacity = 0.45 + (count / max_count) * 0.45
+      width = 140 + (count / max_count) * 260
+
+      cards_html += f"""
+      <div style="
+          flex-grow:1;
+          min-width:180px;
+          max-width:{width}px;
+          padding:18px 22px;
+          border-radius:22px;
+          background:linear-gradient(
+                135deg,
+                rgba(41,128,185,{opacity}),
+                rgba(46,204,113,{opacity})
+          );
+          color:#F8FAFC;
+          font-size:{size}px;
+          font-weight:600;
+          font-family:Inter,sans-serif;
+          letter-spacing:-0.3px;
+          text-align:center;
+          transition:0.2s;
+          box-shadow:0 2px 10px rgba(0,0,0,0.05);
+      ">
+          {word}
+          <div style="
+              font-size:12px;
+              opacity:0.85;
+              margin-top:6px;
+          ">
+              {count} fotot
+          </div>
+      </div>
+      """
+
+  cards_html += "</div>"
+
+  components.html(cards_html, height=700, scrolling=True)
+
 #TOP 15
   st.markdown("---")
   st.markdown("### TOP 15 märksõna")
@@ -523,6 +561,91 @@ with tab3:
       f"Kõige sagedasem märksõna on '{keyword_counts.index[0]}', "
       f"mida esineb {keyword_counts.iloc[0]} korda."
   )
+# MÄRKSÕNA AJAS
+  st.markdown("---")
+  st.subheader("Märksõna ajas")
+
+  selected_word = st.selectbox(
+      "Vali märksõna",
+      keyword_counts.index
+  )
+
+  keyword_data = master_filtered[
+      master_filtered["ERA märksõnad (koondatud)"]
+      .str.contains(selected_word, case=False, na=False)
+  ].copy()
+
+  keyword_years = keyword_data.groupby("Aasta").size().reset_index(name="Fotode arv")
+
+  fig_keyword_time = px.line(
+      keyword_years,
+      x="Aasta",
+      y="Fotode arv",
+      markers=True
+  )
+
+  fig_keyword_time.update_layout(
+      plot_bgcolor="rgba(0,0,0,0)",
+      paper_bgcolor="rgba(0,0,0,0)"
+  )
+
+  st.plotly_chart(
+      fig_keyword_time,
+      use_container_width=True,
+      config={"displayModeBar": False}
+  )
+# MÄRKSÕNA SEOSED
+  st.markdown("---")
+  st.subheader("Seotud märksõnad")
+
+  related_keywords = (
+      keyword_data["ERA märksõnad (koondatud)"]
+      .dropna()
+      .astype(str)
+      .str.split(",")
+  )
+
+  related_list = []
+
+  for row in related_keywords:
+      cleaned = [x.strip() for x in row]
+
+      if selected_word in cleaned:
+          related_list.extend(
+              [x for x in cleaned if x != selected_word]
+          )
+
+  related_counts = (
+      pd.Series(related_list)
+      .value_counts()
+      .head(10)
+      .reset_index()
+  )
+
+  related_counts.columns = ["Märksõna", "Seose tugevus"]
+
+  fig_related = px.bar(
+      related_counts,
+      x="Seose tugevus",
+      y="Märksõna",
+      orientation="h",
+      color="Seose tugevus",
+      color_continuous_scale="Tealgrn"
+  )
+
+  fig_related.update_layout(
+      yaxis=dict(categoryorder="total ascending"),
+      plot_bgcolor="rgba(0,0,0,0)",
+      paper_bgcolor="rgba(0,0,0,0)",
+      coloraxis_showscale=False
+  )
+
+  st.plotly_chart(
+      fig_related,
+      use_container_width=True,
+      config={"displayModeBar": False}
+  )
+
 with tab5:
   # ANDMETE TABEL CSV KUJUL
   st.markdown("---")
