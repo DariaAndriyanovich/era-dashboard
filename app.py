@@ -167,33 +167,69 @@ with tab1:
   if selected:
       df = df[df["Kihelkond"].isin(selected)]
 
-#KPI
-  k1, k2, k3, k4, k5 = st.columns(5)
+# KPI CARDS
+  cards = [
+      ("Fotode arv", f"{len(df):,}"),
+      ("Kihelkondi", df["Kihelkond"].nunique()),
+      ("Asukohti", df["Koht täpsemalt"].nunique()),
+      ("Ajavahemik", f"{int(df['Aasta'].min())}–{int(df['Aasta'].max())}"),
+      ("Koordinaatidega", f"{df['koordinaadid_leitud'].sum():,}")
+  ]
 
-  k1.metric(
-      " Fotode arv",
-      f"{len(df):,}"
-  )
+  cards_html = """
+  <div style="
+      display:flex;
+      gap:22px;
+      flex-wrap:wrap;
+      margin-top:25px;
+  ">
+  """
 
-  k2.metric(
-      " Kihelkondi",
-      df["Kihelkond"].nunique()
-  )
+  for label, value in cards:
 
-  k3.metric(
-      " Asukohti",
-      df["Koht täpsemalt"].nunique()
-  )
+      cards_html += f"""
+      <div style="
+          flex:1;
+          min-width:150px;
+          background:white;
+          padding:18px;
+          border-radius:24px;
+          box-shadow:0 4px 14px rgba(0,0,0,0.06);
+          border:1px solid rgba(0,0,0,0.04);
+          text-align:center;
+      ">
 
-  k4.metric(
-      " Ajavahemik",
-      f"{int(df['Aasta'].min())}–{int(df['Aasta'].max())}"
-  )
+          <div style="
+              font-family: Inter, sans-serif;
+              font-size:22px;
+              margin-bottom:10px;
+          ">
+          </div>
 
-  k5.metric(
-      " Koordinaatidega",
-      f"{df['koordinaadid_leitud'].sum():,}"
-  )
+          <div style="
+              font-family: Inter, sans-serif;
+              font-size:14px;
+              color:#7a7a7a;
+              margin-bottom:10px;
+          ">
+              {label}
+          </div>
+
+          <div style="
+              font-family: Inter, sans-serif;
+              font-size:25px;
+              font-weight:600;
+              color:#2b2b2b;
+          ">
+              {value}
+          </div>
+
+      </div>
+      """
+
+  cards_html += "</div>"
+
+  components.html(cards_html, height=200, scrolling=False)
 
   # ASUKOHT SIDEBAR
   selected_places = st.sidebar.multiselect(
