@@ -70,12 +70,13 @@ with tab1:
       sheet_name="fotod_koordinaatidega"
   )
 
+  df.columns = df.columns.str.strip()
+
   master = pd.read_excel(
       "ERA_fotod_250426.xlsx",
       sheet_name="fotod_master"
   )
 
-  df.columns = df.columns.str.strip()
   master.columns = master.columns.str.strip()
 
   df["PID"] = df["PID"].astype(str).str.strip()
@@ -87,12 +88,16 @@ with tab1:
 
   df = df.merge(master_small, on="PID", how="left")
 
+  df = df.drop_duplicates()
+
   df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
+
   df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
   df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
 
   df["koordinaadid_leitud"] = (
-      df["Latitude"].notna() & df["Longitude"].notna()
+      df["Latitude"].notna() &
+      df["Longitude"].notna()
   )
 
       #### SIDE BAR ###
@@ -108,16 +113,26 @@ with tab1:
       st.session_state["asukoht_filter"] = []
       st.rerun()
 
-  # AASTA SIDEBAR
+ #AASTA SIDEBAR
+  year_min = int(df["Aasta"].dropna().min())
+  year_max = int(df["Aasta"].dropna().max())
+
   year_range = st.sidebar.slider(
       "Aasta",
-      int(df["Aasta"].min()),
-      int(df["Aasta"].max()),
-      (int(df["Aasta"].min()), int(df["Aasta"].max())),
+      year_min,
+      year_max,
+      (year_min, year_max),
       key="year_range"
   )
 
-  df = df[(df["Aasta"] >= year_range[0]) & (df["Aasta"] <= year_range[1])]
+  df = df[
+      (
+          (df["Aasta"] >= year_range[0]) &
+          (df["Aasta"] <= year_range[1])
+      )
+      |
+      (df["Aasta"].isna())
+  ]
 
   # KIHELKOND SIDEBAR
   selected = st.sidebar.multiselect(
