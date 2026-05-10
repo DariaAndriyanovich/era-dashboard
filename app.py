@@ -67,14 +67,33 @@ with tab1:
 
   df = pd.read_excel(
       "ERA_fotod_250426.xlsx",
+      sheet_name="fotod_koordinaatidega"
+  )
+
+  master = pd.read_excel(
+      "ERA_fotod_250426.xlsx",
       sheet_name="fotod_master"
   )
 
   df.columns = df.columns.str.strip()
+  master.columns = master.columns.str.strip()
+
+  df["PID"] = df["PID"].astype(str).str.strip()
+  master["PID"] = master["PID"].astype(str).str.strip()
+
+  master_small = master[["PID", "Aasta"]].drop_duplicates(subset=["PID"])
+
+  df = df.drop(columns=["Aasta"], errors="ignore")
+
+  df = df.merge(master_small, on="PID", how="left")
 
   df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
-  df = df.dropna(subset=["Aasta"])
-  df["Aasta"] = df["Aasta"].astype(int)
+  df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
+  df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
+
+  df["koordinaadid_leitud"] = (
+      df["Latitude"].notna() & df["Longitude"].notna()
+  )
 
       #### SIDE BAR ###
   st.sidebar.header("Filtrid")
@@ -103,7 +122,7 @@ with tab1:
   # KIHELKOND SIDEBAR
   selected = st.sidebar.multiselect(
       "Kihelkond",
-      sorted(df["Kihelkond"].dropna().unique()),
+      sorted(df["Kihelkond"].dropna().astype(str).unique()),
       key="kihelkond_filter"
   )
 
@@ -217,41 +236,6 @@ with tab1:
 
   st.plotly_chart(fig3, use_container_width=True)
 
-  #FOTOGRAAFIDE ANALÜÜS
-
-  st.markdown("---")
-  st.subheader(" Kõige aktiivsemad fotograafid")
-
-  df_foto = df.dropna(subset=["Fotograaf (puhastatud)"])
-
-  top_fotograafid = (
-      df_foto["Fotograaf (puhastatud)"]
-      .value_counts()
-      .head(10)
-      .reset_index()
-  )
-
-  top_fotograafid.columns = ["Fotograaf", "Fotode arv"]
-
-  fig_foto = px.bar(
-      top_fotograafid,
-      x="Fotograaf",
-      y="Fotode arv",
-      color="Fotode arv",
-      color_continuous_scale="Oranges",
-      title="Top 10 fotograafid fotode arvu järgi"
-  )
-
-  fig_foto.update_layout(coloraxis_showscale=False)
-
-  st.plotly_chart(fig_foto, use_container_width=True)
-
-
-  # ANDMETE TABEL CSV KUJUL
-  st.markdown("---")
-  st.subheader("Andmed")
-
-  st.dataframe(df.head(20), use_container_width=True)
 
   #VÕRDLUS KIHELKONDADE VAHEL
   st.markdown("---")
@@ -416,6 +400,12 @@ with tab3:
   st.plotly_chart(fig_keywords, use_container_width=True)
 
 with tab5:
+  # ANDMETE TABEL CSV KUJUL
+  st.markdown("---")
+  st.subheader("Andmed")
+
+  st.dataframe(df.head(20), use_container_width=True)
+
   # ANDMETE KVALITEET
   st.markdown("---")
   st.subheader("Andmete kvaliteet")
