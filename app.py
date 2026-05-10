@@ -306,9 +306,12 @@ with tab1:
       fig = px.line(comp, x="Aasta", y="Arv", color="Kihelkond")
       st.plotly_chart(fig)
 
+# GEOJSON - KIHELKONNA PIIRID
+with open("data/areas.geojson", "r", encoding="utf-8") as f:
+    geojson_data = json.load(f)
+
 with tab2:
   # UUS KAART
-  st.markdown("---")
   st.header("Fotode kaart")
 
   df_map = pd.read_excel(
@@ -316,7 +319,6 @@ with tab2:
       sheet_name="fotod_koordinaatidega"
   )
   df_map.columns = df_map.columns.str.strip()
-  st.write(df_map.columns)
 
   df_map = df_map.dropna(subset=["Latitude", "Longitude"])
 
@@ -335,31 +337,53 @@ with tab2:
       .size()
       .reset_index(name="count")
   )
+  # KIHELKONDADE KOKKUVÕTE POLÜGOONIDE JAOKS
+  polygon_counts = (
+      df_map
+      .groupby("Kihelkond")
+      .size()
+      .reset_index(name="Fotode arv")
+  )
 
-  fig_map = px.scatter_mapbox(
+  fig_map = px.choropleth_mapbox(
+      polygon_counts,
+      geojson=geojson_data,
+      locations="Kihelkond",
+      featureidkey="properties.KIHELKOND",
+      color="Fotode arv",
+      color_continuous_scale="YlOrRd",
+      mapbox_style="carto-positron",
+      zoom=6.4,
+      center={"lat": 58.7, "lon": 25.0},
+      opacity=0.45,
+      height=650,
+      hover_name="Kihelkond",
+      hover_data={"Fotode arv": True}
+  )
+
+  fig_points = px.scatter_mapbox(
       map_counts,
       lat="Latitude",
       lon="Longitude",
       size="count",
+      hover_name="Kihelkond",
       hover_data={
-          "Kihelkond": True,
           "Koht täpsemalt": True,
           "count": True,
           "Latitude": False,
           "Longitude": False,
       },
-      labels={
-          "Kihelkond": "Kihelkond",
-          "Koht täpsemalt": "Täpne asukoht",
-          "count": "Fotode arv",
-      },
-      zoom=6,
-      height=500
+      size_max=20
   )
 
+  for trace in fig_points.data:
+      fig_map.add_trace(trace)
+
+  fig_map.update_traces(marker=dict(opacity=0.75), selector=dict(mode="markers"))
+
   fig_map.update_layout(
-      mapbox_style="carto-darkmatter",
-      margin={"r": 0, "t": 0, "l": 0, "b": 0}
+      margin={"r": 0, "t": 0, "l": 0, "b": 0},
+      coloraxis_colorbar=dict(title="Fotode arv")
   )
 
   st.plotly_chart(fig_map, use_container_width=True)
