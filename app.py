@@ -851,6 +851,9 @@ with tab4:
   # PUUDUVAD ANDMED
   st.markdown("---")
   st.subheader("Puuduvad andmed")
+  st.caption(
+    "Tabel näitab, millistes veergudes esineb kõige rohkem puuduvaid väärtusi."
+  )
 
   missing = df.isnull().sum().reset_index()
   missing.columns = ["Veerg", "Puuduvaid väärtusi"]
@@ -859,7 +862,21 @@ with tab4:
   missing = missing.sort_values("Puuduvaid väärtusi", ascending=False)
 
   st.dataframe(missing)
+# Filtreeritud andmestiku allalaadimise nupp
+  st.markdown("---")
 
+  csv = df.to_csv(index=False).encode("utf-8")
+
+  st.download_button(
+      label="Laadi filtreeritud andmestik alla (CSV)",
+      data=csv,
+      file_name="ERA_fotoarhiiv_filtreeritud.csv",
+      mime="text/csv"
+  )
+
+  st.caption(
+      "Alla laaditakse hetkel filtritega kuvatud andmestik."
+  )
 st.markdown("---")
 st.caption(
     "ERA Photo Archive Dashboard • Digital Humanities Project • University of Tartu"
