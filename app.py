@@ -129,11 +129,47 @@ with tab1:
   if selected:
       df = df[df["Kihelkond"].isin(selected)]
 
-  col1, col2, col3 = st.columns(3)
+  k1, k2, k3, k4, k5 = st.columns(5)
 
-  col1.metric("Fotode arv", len(df))
-  col2.metric("Kihelkondi", df["Kihelkond"].nunique())
-  col3.metric("Asukohti", df["Koht täpsemalt"].nunique())
+  k1.metric(
+
+      " Fotode arv",
+
+      f"{len(df):,}"
+
+  )
+
+  k2.metric(
+
+      " Kihelkondi",
+
+      df["Kihelkond"].nunique()
+
+  )
+
+  k3.metric(
+
+      " Asukohti",
+
+      df["Koht täpsemalt"].nunique()
+
+  )
+
+  k4.metric(
+
+      " Ajavahemik",
+
+      f"{int(df['Aasta'].min())}–{int(df['Aasta'].max())}"
+
+  )
+
+  k5.metric(
+
+      " Koordinaatidega",
+
+      f"{df['koordinaadid_leitud'].sum():,}"
+
+  )
 
   # ASUKOHT SIDEBAR
   selected_places = st.sidebar.multiselect(
