@@ -46,11 +46,10 @@ st.markdown("""
 
 ### TABIDE LOOMINE ###
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "Ajaline analüüs",
     "Kaart",
     "Märksõnad",
-    "ML analüüs",
     "Andmed"
 
 ])
@@ -245,100 +244,134 @@ with tab1:
 
   st.markdown("---")
 
-  # FOTODE JAOTUS AJAS
-  st.subheader("Fotode jaotus ajas")
+#FOTODE JAOTUS AJAS
+  st.markdown("### Fotode jaotus aastate lõikes")
+  st.caption("Graafik näitab, kuidas fotode arv muutus aastate jooksul.")
 
-  timeline = df.groupby("Aasta").size().reset_index(name="count")
-  fig = px.line(timeline, x="Aasta", y="count")
-  st.plotly_chart(fig, use_container_width=True)
-
-  #KIHELKONDADE JAOTUS AJAS
-  st.markdown("---")
-  st.subheader("Kihelkonnad ajas")
-
-  top_kihelkonnad_time = (
-      df["Kihelkond"]
-      .dropna()
-      .value_counts()
-      .head(5)
-      .index
+  photos_by_year = (
+      df.groupby("Aasta")
+      .size()
+      .reset_index(name="Fotode arv")
   )
 
-  df_time = df[df["Kihelkond"].isin(top_kihelkonnad_time)]
+  fig = px.area(
+      photos_by_year,
+      x="Aasta",
+      y="Fotode arv",
+      line_shape="spline"
+  )
 
-  df_time_grouped = (
-      df_time
+  fig.update_traces(
+      line=dict(color="#5B8FF9", width=3),
+      fillcolor="rgba(91,143,249,0.18)"
+  )
+
+  fig.update_layout(
+      height=520,
+      paper_bgcolor="white",
+      plot_bgcolor="white",
+
+      margin=dict(l=20, r=20, t=20, b=20),
+
+      xaxis=dict(
+          title="Aasta",
+          showgrid=False,
+          zeroline=False
+      ),
+
+      yaxis=dict(
+          title="Fotode arv",
+          gridcolor="rgba(0,0,0,0.06)",
+          zeroline=False
+      ),
+
+      hovermode="x unified",
+  )
+
+  with st.container():
+    st.plotly_chart(fig, use_container_width=True)
+
+  # KIHELKONNAD AJAS
+
+  st.markdown("### Kihelkonnad ajas")
+  st.caption("Graafik näitab erinevate kihelkondade fotode arvu muutumist ajas.")
+
+  top_kih = df["Kihelkond"].value_counts().head(5).index
+
+  timeline_df = (
+      df[df["Kihelkond"].isin(top_kih)]
       .groupby(["Aasta", "Kihelkond"])
       .size()
       .reset_index(name="Fotode arv")
   )
 
-  fig_time = px.line(
-      df_time_grouped,
+  fig_timeline = px.line(
+      timeline_df,
       x="Aasta",
       y="Fotode arv",
       color="Kihelkond",
-      markers=True
+      markers=True,
   )
 
-  st.plotly_chart(fig_time, use_container_width=True)
-
-  # KIHELKONDADE JAOTUS
-  st.subheader("Kõige esindatumad kihelkonnad")
-
-  top = (
-      df["Kihelkond"]
-      .value_counts()
-      .head(10)
-      .reset_index()
+  fig_timeline.update_layout(
+      paper_bgcolor="white",
+      plot_bgcolor="white",
+      height=550,
+      margin=dict(l=20, r=20, t=30, b=20),
+      font=dict(size=14),
+      hovermode="x unified",
+      legend_title="Kihelkond"
   )
 
-  top.columns = ["Kihelkond", "Arv"]
-
-  fig2 = px.bar(
-      top,
-      x="Kihelkond",
-      y="Arv",
-      color="Arv",
-      color_continuous_scale="Blues"
+  fig_timeline.update_traces(
+      line=dict(width=3),
+      marker=dict(size=7),
   )
 
-  fig2.update_layout(coloraxis_showscale=False)
+  st.plotly_chart(fig_timeline, use_container_width=True)
 
-  st.plotly_chart(fig2, use_container_width=True)
+# KÕIGE SAGEDASEMAD ASUKOHAD
 
-  st.markdown("---")
-  # ASUKOHTADE JAOTUS
-  st.subheader("Kõige sagedasemad asukohad")
+  st.markdown("### Kõige sagedasemad asukohad")
+  st.caption("Top 10 kõige sagedamini esinevat täpset asukohta.")
 
-  top_places = (        #
+  top_places = (
       df["Koht täpsemalt"]
       .dropna()
       .value_counts()
       .head(10)
-      .reset_index()
+      .reset_index(name="Fotode arv")
   )
 
-  top_places.columns = ["Täpne asukoht", "Fotode arv"]
-
-  fig3 = px.bar(
+  fig_places = px.bar(
       top_places,
-      x="Täpne asukoht",
+      x="Koht täpsemalt",
       y="Fotode arv",
       color="Fotode arv",
-      color_continuous_scale="Greens"
+      color_continuous_scale="Tealgrn"
   )
 
-  fig3.update_layout(coloraxis_showscale=False)
+  fig_places.update_layout(
+      paper_bgcolor="white",
+      plot_bgcolor="white",
+      height=500,
+      margin=dict(l=20, r=20, t=30, b=20),
+      font=dict(size=14),
+      coloraxis_showscale=False,
+  )
 
-  st.plotly_chart(fig3, use_container_width=True)
+  fig_places.update_traces(
+      marker_line_width=0,
+      hovertemplate="<b>%{x}</b><br>Fotode arv: %{y}<extra></extra>"
+  )
 
+  st.plotly_chart(fig_places, use_container_width=True)
 
   #VÕRDLUS KIHELKONDADE VAHEL
   st.markdown("---")
   st.subheader("Võrdlus kahe kihelkonna vahel")
 
-  valik = st.multiselect("Vali kuni 2 kihelkonda", df["Kihelkond"].unique())
+  valik = st.multiselect("Vali kuni 2 kihelkonda, et võrrelda nende fotode jaotust ajas.", df["Kihelkond"].unique())
 
   if len(valik) == 2:
       df_compare = df[df["Kihelkond"].isin(valik)]
@@ -359,6 +392,7 @@ with open("data/areas.geojson", "r", encoding="utf-8") as f:
 with tab2:
   # UUS KAART
   st.header("Fotode kaart")
+  st.caption("Kaart näitab fotode geograafilist jaotust Eesti ajalooliste kihelkondade lõikes.")
 
   df_map = pd.read_excel(
       "ERA_fotod_250426.xlsx",
@@ -682,14 +716,36 @@ with tab3:
       config={"displayModeBar": False}
   )
 
-with tab5:
+with tab4:
   # ANDMETE TABEL CSV KUJUL
-  st.markdown("---")
-  st.subheader("Andmed")
+  st.markdown("### Näidis andmestikust")
+  st.caption("Valik ERA fotoarhiivi andmestikust.")
 
-  st.dataframe(df.head(20), use_container_width=True)
+  show_cols = [
+    "PID",
+    "Sisu kirjeldus",
+    "Koht täpsemalt",
+    "Kihelkond",
+    "Aasta"
+  ]
 
-  # ANDMETE KVALITEET
+  df_show = df[show_cols].rename(columns={
+    "PID": "Foto ID",
+    "Sisu kirjeldus": "Kirjeldus",
+    "Koht täpsemalt": "Asukoht",
+    "Kihelkond": "Kihelkond",
+    "Aasta": "Aasta"
+  })
+
+  st.caption("Esimesed 100 rida ERA fotoarhiivi andmestikust.")
+
+  st.dataframe(
+      df[show_cols].head(100),
+      use_container_width=True,
+      height=350
+  )
+
+# ANDMETE KVALITEET
   st.markdown("---")
   st.subheader("Andmete kvaliteet")
 
@@ -698,18 +754,65 @@ with tab5:
 
   col1, col2, col3 = st.columns(3)
 
-  col1.metric("Kõik fotod", total)
-  col2.metric("Koordinaatidega fotod", with_coords)
-  col3.metric("Puuduvad koordinaadid", total - with_coords)
+  col1.metric("Kõik fotod", f"{total:,}")
+  col2.metric("Koordinaatidega fotod", f"{with_coords:,}")
+  col3.metric("Puuduvad koordinaadid", f"{total - with_coords:,}")
 
   percent = round((with_coords / total) * 100, 1)
 
-  st.markdown(f"Kaardil kuvatakse **{percent}%** kõikidest fotodest.")
+  st.markdown(
+      f"Kaardil kuvatakse **{percent}%** kõikidest fotodest."
+  )
 
   if percent < 50:
-      st.warning(" Suur osa andmetest ei sisalda koordinaate.")
+      st.warning(
+          "Suur osa andmetest ei sisalda koordinaate."
+      )
   else:
-      st.success(" Andmestik sobib hästi kaardipõhiseks analüüsiks.")
+      st.success(
+          "Andmestik sobib hästi kaardipõhiseks analüüsiks."
+      )
+
+  st.caption(
+      "Koordinaatide olemasolu võimaldab kasutada ruumilist ja kaardipõhist analüüsi."
+  )
+
+#TOP FOTOGRAAFID
+  st.markdown("---")
+  st.subheader("Kõige sagedasemad fotograafid")
+
+  top_fotograafid = (
+      df["Sisu kirjeldus"]
+      .dropna()
+      .value_counts()
+      .head(10)
+      .reset_index()
+  )
+
+  top_fotograafid.columns = ["Fotograaf", "Fotode arv"]
+
+  fig_foto = px.bar(
+      top_fotograafid,
+      x="Fotode arv",
+      y="Fotograaf",
+      orientation="h",
+      color="Fotode arv",
+      color_continuous_scale="Tealgrn",
+  )
+
+  fig_foto.update_layout(
+      height=500,
+      yaxis=dict(categoryorder="total ascending"),
+      paper_bgcolor="white",
+      plot_bgcolor="white"
+  )
+
+  st.plotly_chart(fig_foto, use_container_width=True)
+
+  st.info(
+      "Enamik fotosid pärineb Setumaa ja Lõuna-Eesti piirkondadest. "
+      "Andmestikus domineerivad 1950.–1960. aastate fotod."
+  )
 
   # PUUDUVAD ANDMED
   st.markdown("---")
@@ -722,3 +825,8 @@ with tab5:
   missing = missing.sort_values("Puuduvaid väärtusi", ascending=False)
 
   st.dataframe(missing)
+
+st.markdown("---")
+st.caption(
+    "ERA Photo Archive Dashboard • Digital Humanities Project • University of Tartu"
+)
