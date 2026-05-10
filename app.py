@@ -3,11 +3,6 @@ import pandas as pd
 import plotly.express as px
 import ssl
 import json
-import matplotlib.pyplot as plt
-try:
-    from wordcloud import WordCloud
-except:
-    WordCloud = None
 
 ### LEHE STIIL JA SEADISTUSED ###
 st.set_page_config(
@@ -113,7 +108,7 @@ with tab1:
       st.session_state["asukoht_filter"] = []
       st.rerun()
 
- #AASTA SIDEBAR
+#AASTA SIDEBAR
   year_min = int(df["Aasta"].dropna().min())
   year_max = int(df["Aasta"].dropna().max())
 
@@ -133,8 +128,34 @@ with tab1:
       |
       (df["Aasta"].isna())
   ]
+#MÄRKSÕNADE SIDEBAR
+  all_keywords = (
+      master["ERA märksõnad (koondatud)"]
+      .dropna()
+      .astype(str)
+      .str.split(",")
+      .explode()
+      .str.strip()
+  )
 
-  # KIHELKOND SIDEBAR
+  unique_keywords = sorted(all_keywords.unique())
+
+  search_keyword = st.sidebar.text_input("Otsi märksõna")
+
+  if search_keyword:
+      filtered_keyword_options = [
+          kw for kw in unique_keywords
+          if search_keyword.lower() in kw.lower()
+      ]
+  else:
+      filtered_keyword_options = unique_keywords
+
+  selected_keywords = st.sidebar.multiselect(
+      "Vali märksõnad",
+      filtered_keyword_options
+  )
+
+# KIHELKOND SIDEBAR
   selected = st.sidebar.multiselect(
       "Kihelkond",
       sorted(df["Kihelkond"].dropna().astype(str).unique()),
@@ -144,46 +165,32 @@ with tab1:
   if selected:
       df = df[df["Kihelkond"].isin(selected)]
 
+#KPI
   k1, k2, k3, k4, k5 = st.columns(5)
 
   k1.metric(
-
       " Fotode arv",
-
       f"{len(df):,}"
-
   )
 
   k2.metric(
-
       " Kihelkondi",
-
       df["Kihelkond"].nunique()
-
   )
 
   k3.metric(
-
       " Asukohti",
-
       df["Koht täpsemalt"].nunique()
-
   )
 
   k4.metric(
-
       " Ajavahemik",
-
       f"{int(df['Aasta'].min())}–{int(df['Aasta'].max())}"
-
   )
 
   k5.metric(
-
       " Koordinaatidega",
-
       f"{df['koordinaadid_leitud'].sum():,}"
-
   )
 
   # ASUKOHT SIDEBAR
@@ -199,6 +206,7 @@ with tab1:
       #### KUJUTATUD ANDMED ###
 
   st.markdown("---")
+
   # FOTODE JAOTUS AJAS
   st.subheader("Fotode jaotus ajas")
 
@@ -410,14 +418,29 @@ with tab3:
   st.header("Kõige sagedasemad märksõnad")
   st.caption("ERA fotoarhiivi enim kasutatud märksõnad")
 
-  keywords = (
-        master["ERA märksõnad (koondatud)"]
+  filtered_pids = df["PID"].astype(str).str.strip().unique()
+
+  master_filtered = master[
+      master["PID"].astype(str).str.strip().isin(filtered_pids)
+  ].copy()
+
+  keywords_series = (
+        master_filtered["ERA märksõnad (koondatud)"]
         .dropna()
         .astype(str)
         .str.split(",")
         .explode()
         .str.strip()
-  )
+    )
+
+  if selected_keywords:
+      keywords = keywords_series[keywords_series.isin(selected_keywords)]
+  elif search_keyword:
+      keywords = keywords_series[
+          keywords_series.str.contains(search_keyword, case=False, na=False)
+      ]
+  else:
+      keywords = keywords_series
 
   keyword_counts = keywords.value_counts().head(80)
 
@@ -436,25 +459,36 @@ with tab3:
 
   k3.metric(
       "Kõige sagedasem",
-      keyword_counts.index[0]
+      keyword_counts.index[0] if not keyword_counts.empty else "-"
   )
-#WORDCLOUD
-  word_freq = keyword_counts.to_dict()
-  wc = WordCloud(
-        width=1400,
-        height=550,
-        background_color="white",
-        colormap="ocean",
-        max_words=80
-  ).generate_from_frequencies(word_freq)
 
-  fig, ax = plt.subplots(figsize=(16, 8))
+  if keywords.empty:
+      st.warning("Valitud filtritega sobivaid märksõnu ei leitud.")
+      st.stop()
 
-  ax.imshow(wc, interpolation="bilinear")
-  ax.axis("off")
+#BUBBLE CHART
+  bubble_df = keyword_counts.reset_index()
+  bubble_df.columns = ["keyword", "count"]
 
-  st.pyplot(fig)
+  fig_bubble = px.scatter(
+      bubble_df,
+      x="keyword",
+      y="count",
+      size="count",
+      color="count",
+      hover_name="keyword",
+      size_max=70,
+      height=700,
+      color_continuous_scale="Teal"
+  )
 
+  fig_bubble.update_layout(
+      xaxis_title="Märksõna",
+      yaxis_title="Fotode arv",
+      showlegend=False
+  )
+
+  st.plotly_chart(fig_bubble, use_container_width=True)
 #TOP 15
   st.markdown("---")
   st.markdown("### TOP 15 märksõna")
@@ -485,6 +519,10 @@ with tab3:
       config={"displayModeBar": False}
   )
 
+  st.caption(
+      f"Kõige sagedasem märksõna on '{keyword_counts.index[0]}', "
+      f"mida esineb {keyword_counts.iloc[0]} korda."
+  )
 with tab5:
   # ANDMETE TABEL CSV KUJUL
   st.markdown("---")
