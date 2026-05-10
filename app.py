@@ -366,6 +366,40 @@ with tab1:
   )
 
   st.plotly_chart(fig_places, use_container_width=True)
+# Pie chart piirkondade / kihelkondade jaotuse visualiseerimiseks
+  st.markdown("---")
+  st.subheader("Fotode jaotus piirkondade järgi")
+
+  piirkonnad = (
+      df["Kihelkond"]
+      .dropna()
+      .value_counts()
+      .head(8)
+      .reset_index()
+  )
+
+  piirkonnad.columns = ["Kihelkond", "Fotode arv"]
+
+  fig_pie = px.pie(
+      piirkonnad,
+      names="Kihelkond",
+      values="Fotode arv",
+      hole=0.45,
+      color_discrete_sequence=px.colors.sequential.Tealgrn
+  )
+
+  fig_pie.update_layout(
+      paper_bgcolor="white",
+      plot_bgcolor="white",
+      height=500,
+      showlegend=True
+  )
+
+  st.plotly_chart(fig_pie, use_container_width=True)
+
+  st.caption(
+      "Diagramm näitab, millistes kihelkondades on kõige rohkem fotosid."
+  )
 
   #VÕRDLUS KIHELKONDADE VAHEL
   st.markdown("---")
