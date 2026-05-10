@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import ssl
 import json
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 ### LEHE STIIL JA SEADISTUSED ###
 st.set_page_config(
@@ -391,12 +393,12 @@ with tab2:
 
   fig_map.update_layout(
       mapbox_style="carto-positron",
-      margin={"r": 0, "t": 0, "l": 0, "b": 0}
-  )
-  coloraxis_colorbar=dict(
-    title="",
-    thickness=12,
-    len=0.5
+      margin={"r": 0, "t": 0, "l": 0, "b": 0},
+      coloraxis_colorbar=dict(
+            title="",
+            thickness=12,
+            len=0.5
+      )
   )
 
   st.plotly_chart(fig_map, use_container_width=True)
@@ -406,86 +408,84 @@ with tab2:
   st.caption(f"Kaardil fotosid (koordinaatidega): {len(df_map)}")
 
 with tab3:
-  # MARKSONADE JAOTUS
+  #MÄRKSÕNAD
+  st.header("Kõige sagedasemad märksõnad")
+  st.caption("ERA fotoarhiivi enim kasutatud märksõnad")
 
-  df_keywords = pd.read_excel(
-      "ERA_fotod_250426.xlsx",
-      sheet_name="märksõnad_pikk"
-  )
-  df_keywords.columns = df_keywords.columns.str.strip()
-
-
-  visible_pids = df["PID"].unique()
-
-  keywords_filtered = df_keywords[
-      df_keywords["PID"].isin(visible_pids)
-  ]
-
-
-  top_keywords = (        #marksonad
-      keywords_filtered["Märksõna"]
-      .dropna()
-      .value_counts()
-      .head(15)
-      .reset_index()
+  keywords = (
+        master["ERA märksõnad (koondatud)"]
+        .dropna()
+        .astype(str)
+        .str.split(",")
+        .explode()
+        .str.strip()
   )
 
-  top_keywords.columns = ["Märksõna", "Fotode arv"]
+  keyword_counts = keywords.value_counts().head(80)
 
-  if top_keywords.empty:
-      st.info("Valitud filtrite korral puuduvad andmed.")
-      st.stop()
+#KPI
+  k1, k2, k3 = st.columns(3)
 
-  st.subheader("Kõige sagedasemad märksõnad")
+  k1.metric(
+      "Märksõnu kokku",
+      f"{len(keywords):,}"
+  )
 
-  fig_keywords = px.bar(      #tabel
-      top_keywords,
+  k2.metric(
+      "Unikaalseid märksõnu",
+      f"{keywords.nunique():,}"
+  )
+
+  k3.metric(
+      "Kõige sagedasem",
+      keyword_counts.index[0]
+  )
+#WORLDCLOUD
+  word_freq = keyword_counts.to_dict()
+  wc = WordCloud(
+        width=1400,
+        height=550,
+        background_color="white",
+        colormap="ocean",
+        max_words=80
+  ).generate_from_frequencies(word_freq)
+
+  fig, ax = plt.subplots(figsize=(16, 8))
+
+  ax.imshow(wc, interpolation="bilinear")
+  ax.axis("off")
+
+  st.pyplot(fig)
+
+#TOP 15
+  st.markdown("---")
+  st.markdown("### TOP 15 märksõna")
+
+  top15 = keyword_counts.head(15).reset_index()
+  top15.columns = ["Märksõna", "Fotode arv"]
+
+  fig_top = px.bar(
+      top15,
       x="Fotode arv",
       y="Märksõna",
       orientation="h",
       color="Fotode arv",
-      color_continuous_scale=[
-      [0.0, "#f2f2f2"],
-      [1.0, "#5a5a5a"]
-  ]
+      color_continuous_scale="Tealgrn"
+  )
+  fig_top.update_traces(marker_line_width=0)
 
+  fig_top.update_layout(
+      yaxis=dict(categoryorder="total ascending"),
+      plot_bgcolor="rgba(0,0,0,0)",
+      paper_bgcolor="rgba(0,0,0,0)",
+      coloraxis_showscale=False
   )
 
-  fig_keywords.update_layout(     #tabel - y-axis legendi eemaldamine
-      yaxis_showticklabels=False
+  st.plotly_chart(
+      fig_top,
+      use_container_width=True,
+      config={"displayModeBar": False}
   )
-
-  fig_keywords.update_traces(     #tabel - sonad
-      text=top_keywords["Märksõna"],
-      textposition="inside",
-      insidetextanchor="middle",
-      textfont=dict(color="black", size=12)
-  )
-
-  fig_keywords.update_layout(
-      yaxis_title="",
-      xaxis_title="Fotode arv",
-      yaxis=dict(autorange="reversed"),
-      coloraxis_showscale=False,
-      margin=dict(l=40, r=40, t=40, b=40)
-  )
-
-  fig_keywords.update_layout(     #tabel - mõõtmed
-      height=300 + len(top_keywords) * 35
-  )
-
-  fig_keywords.update_layout(     #tabel - kergem lugeda
-      xaxis=dict(
-          showgrid=False,
-          ticks="outside",
-          showline=True,
-          linewidth=1,
-          linecolor="rgba(0,0,0,0.3)"
-      )
-  )
-
-
-  st.plotly_chart(fig_keywords, use_container_width=True)
 
 with tab5:
   # ANDMETE TABEL CSV KUJUL
