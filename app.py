@@ -369,15 +369,22 @@ with tab2:
       hover_name="Kihelkond",
       hover_data={
           "Koht täpsemalt": True,
-          "count": True,
+          "count": False,
           "Latitude": False,
           "Longitude": False,
       },
-      size_max=8,
-      color_discrete_sequence=["#C9EA0C"]
+      custom_data=["Koht täpsemalt", "count"],
+      size_max=20,
+      color_discrete_sequence=["#EDF85B"]
   )
 
   for trace in fig_points.data:
+      trace.hovertemplate = (
+        "<b>%{hovertext}</b><br>"
+        "Asukoht: %{customdata[0]}<br>"
+        "Fotode arv: %{customdata[1]}<extra></extra>"
+      )
+
       fig_map.add_trace(trace)
 
   fig_map.update_traces(marker=dict(opacity=0.55), selector=dict(type="scattermapbox"))
