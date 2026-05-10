@@ -3,6 +3,28 @@ import pandas as pd
 import plotly.express as px
 import ssl
 
+### LEHE STIIL JA SEADISTUSED ###
+
+st.set_page_config(
+    page_title="ERA Dashboard",
+    layout="wide"
+)
+
+st.markdown("""
+<style>
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+h1, h2, h3 {
+    font-weight: 700;
+}
+</style>
+""", unsafe_allow_html=True)
+
+px.defaults.template = "plotly_white"
+
     ### ANDMED ###
 ssl._create_default_https_context = ssl._create_unverified_context
 
