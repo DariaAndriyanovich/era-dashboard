@@ -1,6 +1,6 @@
 # ERA Photo Archive Dashboard
 
-Interactive Digital Humanities dashboard for exploring the ERA (Eesti Rahvaluulearhiiv) photo archive dataset.
+Interactive Digital Humanities dashboard for exploring the ERA  photo archive dataset.
 
 ## Features
 
