@@ -351,11 +351,11 @@ with tab2:
       locations="Kihelkond",
       featureidkey="properties.KIHELKOND",
       color="Fotode arv",
-      color_continuous_scale="YlOrRd",
+      color_continuous_scale="Viridis",
       mapbox_style="carto-positron",
       zoom=6.4,
       center={"lat": 58.7, "lon": 25.0},
-      opacity=0.45,
+      opacity=0.5,
       height=650,
       hover_name="Kihelkond",
       hover_data={"Fotode arv": True}
@@ -373,17 +373,23 @@ with tab2:
           "Latitude": False,
           "Longitude": False,
       },
-      size_max=20
+      size_max=8,
+      color_discrete_sequence=["#C9EA0C"]
   )
 
   for trace in fig_points.data:
       fig_map.add_trace(trace)
 
-  fig_map.update_traces(marker=dict(opacity=0.75), selector=dict(mode="markers"))
+  fig_map.update_traces(marker=dict(opacity=0.55), selector=dict(type="scattermapbox"))
 
   fig_map.update_layout(
-      margin={"r": 0, "t": 0, "l": 0, "b": 0},
-      coloraxis_colorbar=dict(title="Fotode arv")
+      mapbox_style="carto-positron",
+      margin={"r": 0, "t": 0, "l": 0, "b": 0}
+  )
+  coloraxis_colorbar=dict(
+    title="",
+    thickness=12,
+    len=0.5
   )
 
   st.plotly_chart(fig_map, use_container_width=True)
