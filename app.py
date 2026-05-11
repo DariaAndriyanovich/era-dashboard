@@ -401,7 +401,7 @@ with tab1:
       "Diagramm näitab, millistes kihelkondades on kõige rohkem fotosid."
   )
 
-  #VÕRDLUS KIHELKONDADE VAHEL
+#VÕRDLUS KIHELKONDADE VAHEL
   st.markdown("---")
   st.subheader("Võrdlus kahe kihelkonna vahel")
 
@@ -424,34 +424,32 @@ with open("data/areas.geojson", "r", encoding="utf-8") as f:
     geojson_data = json.load(f)
 
 with tab2:
-  # UUS KAART
+# UUS KAART
   st.header("Fotode kaart")
   st.caption("Kaart näitab fotode geograafilist jaotust Eesti ajalooliste kihelkondade lõikes.")
 
-  df_map = pd.read_excel(
-      "ERA_fotod_250426.xlsx",
-      sheet_name="fotod_koordinaatidega"
+  df_map = df.copy()
+
+  df_map = df_map.dropna(
+      subset=["Latitude", "Longitude"]
   )
-  df_map.columns = df_map.columns.str.strip()
 
-  df_map = df_map.dropna(subset=["Latitude", "Longitude"])
-
-  # KAART - KIHELKOND FILTER
+# KAART - KIHELKOND FILTER
   if selected:
       df_map = df_map[df_map["Kihelkond"].isin(selected)]
 
-  # KAART - ASUKOHT FILTER
+# KAART - ASUKOHT FILTER
   if selected_places:
       df_map = df_map[df_map["Koht täpsemalt"].isin(selected_places)]
 
-  # KAART - ANDMED JA KUJUTUS
+# KAART - ANDMED JA KUJUTUS
   map_counts = (
       df_map
       .groupby(["Latitude", "Longitude", "Kihelkond", "Koht täpsemalt"])
       .size()
       .reset_index(name="count")
   )
-  # KIHELKONDADE KOKKUVÕTE POLÜGOONIDE JAOKS
+# KIHELKONDADE KOKKUVÕTE POLÜGOONIDE JAOKS
   polygon_counts = (
       df_map
       .groupby("Kihelkond")
@@ -515,12 +513,12 @@ with tab2:
 
   st.plotly_chart(fig_map, use_container_width=True)
 
-  # KAART - KAARDISTATUD INFO TÄPSUSTUS
+# KAART - KAARDISTATUD INFO TÄPSUSTUS
   st.caption(f"Tabelis fotosid (kokku): {len(df)}")
   st.caption(f"Kaardil fotosid (koordinaatidega): {len(df_map)}")
 
 with tab3:
-  #MÄRKSÕNAD
+#MÄRKSÕNAD
   st.header("Kõige sagedasemad märksõnad")
   st.caption("ERA fotoarhiivi enim kasutatud märksõnad")
 
@@ -751,7 +749,7 @@ with tab3:
   )
 
 with tab4:
-  # ANDMETE TABEL CSV KUJUL
+# ANDMETE TABEL CSV KUJUL
   st.markdown("### Näidis andmestikust")
   st.caption("Valik ERA fotoarhiivi andmestikust.")
 
@@ -848,7 +846,7 @@ with tab4:
       "Andmestikus domineerivad 1950.–1960. aastate fotod."
   )
 
-  # PUUDUVAD ANDMED
+# PUUDUVAD ANDMED
   st.markdown("---")
   st.subheader("Puuduvad andmed")
   st.caption(
