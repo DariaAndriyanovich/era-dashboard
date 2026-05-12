@@ -74,7 +74,6 @@ with tab1:
   )
 
   master.columns = master.columns.str.strip()
-
   df["PID"] = df["PID"].astype(str).str.strip()
   master["PID"] = master["PID"].astype(str).str.strip()
 
@@ -129,9 +128,27 @@ with tab1:
       |
       (df["Aasta"].isna())
   ]
-#MÄRKSÕNADE SIDEBAR
+
+# KIHELKOND SIDEBAR
+  selected = st.sidebar.multiselect(
+      "Kihelkond",
+      sorted(df["Kihelkond"].dropna().astype(str).unique()),
+      key="kihelkond_filter"
+  )
+
+  if selected:
+      df = df[df["Kihelkond"].isin(selected)]
+
+# MÄRKSÕNADE SIDEBAR
+
+  filtered_pids = df["PID"].astype(str).str.strip().unique()
+
+  master_filtered_sidebar = master[
+      master["PID"].astype(str).str.strip().isin(filtered_pids)
+  ].copy()
+
   all_keywords = (
-      master["ERA märksõnad (koondatud)"]
+      master_filtered_sidebar["ERA märksõnad (koondatud)"]
       .dropna()
       .astype(str)
       .str.split(",")
@@ -156,22 +173,21 @@ with tab1:
       filtered_keyword_options
   )
 
-# KIHELKOND SIDEBAR
-  selected = st.sidebar.multiselect(
-      "Kihelkond",
-      sorted(df["Kihelkond"].dropna().astype(str).unique()),
-      key="kihelkond_filter"
-  )
-
-  if selected:
-      df = df[df["Kihelkond"].isin(selected)]
-
 # KPI CARDS
   cards = [
       ("Fotode arv", f"{len(df):,}"),
       ("Kihelkondi", df["Kihelkond"].nunique()),
       ("Asukohti", df["Koht täpsemalt"].nunique()),
-      ("Ajavahemik", f"{int(df['Aasta'].min())}–{int(df['Aasta'].max())}"),
+
+      (
+          "Ajavahemik",
+          (
+              f"{int(df['Aasta'].dropna().min())}–{int(df['Aasta'].dropna().max())}"
+              if not df["Aasta"].dropna().empty
+              else "Puudub"
+          )
+      ),
+
       ("Koordinaatidega", f"{df['koordinaadid_leitud'].sum():,}")
   ]
 
