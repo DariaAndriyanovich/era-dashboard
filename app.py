@@ -298,6 +298,8 @@ with tab1:
           .astype(str)
           .str.strip()
       )
+      if "PID" not in ml_df.columns:
+          ml_df["PID"] = pd.NA
 
       if "Märksõna" not in ml_df.columns:
           ml_df["Märksõna"] = pd.NA
@@ -308,6 +310,13 @@ with tab1:
       ml_df = ml_df.rename(columns={
           "Märksõna2": "Kategooria"
       })
+
+      ml_df["PID"] = (
+        ml_df["PID"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+      )
 
       ml_df["Märksõna"] = (
           ml_df["Märksõna"]
@@ -505,6 +514,7 @@ with tab1:
       selected_marksonad=selected_marksonad,
       logic=marksona_logic
   )
+
 # KPI CARDS
   cards = [
       ("Fotode arv", f"{len(df):,}"),
