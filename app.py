@@ -54,46 +54,49 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 ])
 
+df = pd.read_excel(
+      "ERA_fotod_250426.xlsx",
+      sheet_name="fotod_koordinaatidega"
+  )
+
+df.columns = df.columns.str.strip()
+
+master = pd.read_excel(
+    "ERA_fotod_250426.xlsx",
+    sheet_name="fotod_master"
+)
+
+master.columns = master.columns.str.strip()
+df["PID"] = df["PID"].astype(str).str.strip()
+master["PID"] = master["PID"].astype(str).str.strip()
+
+master_small = master[["PID", "Aasta"]].drop_duplicates(subset=["PID"])
+
+df = df.drop(columns=["Aasta"], errors="ignore")
+
+df = df.merge(master_small, on="PID", how="left")
+
+df = df.drop_duplicates()
+
+df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
+
+df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
+df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
+
+df["koordinaadid_leitud"] = (
+    df["Latitude"].notna() &
+    df["Longitude"].notna()
+)
+
 with tab1:
 
   ### ANDMED ###
   ssl._create_default_https_context = ssl._create_unverified_context
 
+  xlsx_path = "ERA_fotod_250426.xlsx"
+
   st.title("ERA Photo Archive Dashboard")
 
-  df = pd.read_excel(
-      "ERA_fotod_250426.xlsx",
-      sheet_name="fotod_koordinaatidega"
-  )
-
-  df.columns = df.columns.str.strip()
-
-  master = pd.read_excel(
-      "ERA_fotod_250426.xlsx",
-      sheet_name="fotod_master"
-  )
-
-  master.columns = master.columns.str.strip()
-  df["PID"] = df["PID"].astype(str).str.strip()
-  master["PID"] = master["PID"].astype(str).str.strip()
-
-  master_small = master[["PID", "Aasta"]].drop_duplicates(subset=["PID"])
-
-  df = df.drop(columns=["Aasta"], errors="ignore")
-
-  df = df.merge(master_small, on="PID", how="left")
-
-  df = df.drop_duplicates()
-
-  df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
-
-  df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
-  df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
-
-  df["koordinaadid_leitud"] = (
-      df["Latitude"].notna() &
-      df["Longitude"].notna()
-  )
 
       #### SIDE BAR ###
   st.sidebar.header("Filtrid")
@@ -223,76 +226,285 @@ with tab1:
           df["PID"].astype(str).str.strip().isin(selected_pids)
       ]
 
+# MÄRKSÕNADE LAADIMINE
+  @st.cache_data
+  def load_marksonad(xlsx_path):
+
+      try:
+
+          marksoned = pd.read_excel(
+              xlsx_path,
+              sheet_name="märksõnad_pikk"
+          )
+
+      except Exception:
+
+          return pd.DataFrame(columns=["PID", "Märksõna"])
+
+      marksoned.columns = (
+          marksoned.columns
+          .astype(str)
+          .str.strip()
+      )
+
+      if "PID" not in marksoned.columns:
+          marksoned["PID"] = pd.NA
+
+      if "Märksõna" not in marksoned.columns:
+          marksoned["Märksõna"] = pd.NA
+
+      marksoned["PID"] = (
+          marksoned["PID"]
+          .fillna("")
+          .astype(str)
+          .str.strip()
+      )
+
+      marksoned["Märksõna"] = (
+          marksoned["Märksõna"]
+          .fillna("")
+          .astype(str)
+          .str.strip()
+      )
+
+      marksoned = marksoned[
+          marksoned["Märksõna"] != ""
+      ]
+
+      return marksoned
+
 
 # MÄRKSÕNADE KATEGOORIAD
+  @st.cache_data
+  def load_marksona_kategooriad():
 
-  keywords_df = pd.read_excel(
-      "ERA_fotod_250426.xlsx",
-      sheet_name="märksõnad_pikk"
-  )
+      try:
 
-  keywords_df.columns = keywords_df.columns.str.strip()
+          ml_df = pd.read_excel(
+              "ERA_märksõnad_ML.xlsx"
+          )
 
-  keywords_df["PID"] = (
-      keywords_df["PID"]
+      except Exception:
+
+          return pd.DataFrame(
+              columns=[
+                  "Märksõna",
+                  "Kategooria"
+              ]
+          )
+
+      ml_df.columns = (
+          ml_df.columns
+          .astype(str)
+          .str.strip()
+      )
+
+      if "Märksõna" not in ml_df.columns:
+          ml_df["Märksõna"] = pd.NA
+
+      if "Märksõna2" not in ml_df.columns:
+          ml_df["Märksõna2"] = pd.NA
+
+      ml_df = ml_df.rename(columns={
+          "Märksõna2": "Kategooria"
+      })
+
+      ml_df["Märksõna"] = (
+          ml_df["Märksõna"]
+          .fillna("")
+          .astype(str)
+          .str.strip()
+      )
+
+      ml_df["Kategooria"] = (
+          ml_df["Kategooria"]
+          .fillna("")
+          .astype(str)
+          .str.strip()
+      )
+
+      ml_df = ml_df[
+          (ml_df["Märksõna"] != "") &
+          (ml_df["Kategooria"] != "")
+      ]
+
+      return ml_df
+
+
+# MÄRKSÕNADE VALIKUD
+
+  def get_marksona_options(marksoned, current_df=None):
+
+      if current_df is not None and "PID" in current_df.columns:
+
+          current_pids = set(
+              current_df["PID"]
+              .dropna()
+              .astype(str)
+              .unique()
+          )
+
+          filtered_marksoned = marksoned[
+              marksoned["PID"].isin(current_pids)
+          ]
+
+      else:
+          filtered_marksoned = marksoned
+
+      options = (
+          filtered_marksoned["Märksõna"]
+          .dropna()
+          .astype(str)
+          .value_counts()
+          .index
+          .tolist()
+      )
+
+      return options
+
+
+# MÄRKSÕNADE FILTREERIMINE
+
+  def filter_by_marksonad(
+      fotod_df,
+      marksoned_df,
+      selected_marksonad,
+      logic="OR"
+  ):
+
+      if not selected_marksonad:
+          return fotod_df
+
+      if logic == "OR":
+
+          matched_pids = set(
+              marksoned_df[
+                  marksoned_df["Märksõna"].isin(selected_marksonad)
+              ]["PID"]
+              .dropna()
+              .astype(str)
+              .unique()
+          )
+
+      else:
+
+          matched_pids = None
+
+          for keyword in selected_marksonad:
+
+              keyword_pids = set(
+                  marksoned_df[
+                      marksoned_df["Märksõna"] == keyword
+                  ]["PID"]
+                  .dropna()
+                  .astype(str)
+                  .unique()
+              )
+
+              if matched_pids is None:
+                  matched_pids = keyword_pids
+              else:
+                  matched_pids = matched_pids & keyword_pids
+
+          if matched_pids is None:
+              matched_pids = set()
+
+      filtered_df = fotod_df[
+          fotod_df["PID"]
+          .astype(str)
+          .isin(matched_pids)
+      ]
+
+      return filtered_df
+
+
+# MÄRKSÕNADE SIDEBAR
+
+  st.sidebar.markdown("## Märksõnad")
+
+  marksoned = load_marksonad(xlsx_path)
+
+  marksona_kategooriad = load_marksona_kategooriad()
+
+# KATEGOORIA FILTER
+  filtered_pids = set(
+      df["PID"]
+      .dropna()
       .astype(str)
-      .str.strip()
+      .unique()
   )
 
-  filtered_pids = df["PID"].astype(str).str.strip()
-
-  keywords_filtered = keywords_df[
-      keywords_df["PID"].isin(filtered_pids)
-  ].copy()
-
-  # KATEGOORIAD
+  filtered_categories_df = marksona_kategooriad[
+      marksona_kategooriad["PID"]
+      .astype(str)
+      .isin(filtered_pids)
+  ]
 
   all_categories = sorted(
-      keywords_filtered["Märksõna"]
+      filtered_categories_df["Kategooria"]
       .dropna()
       .astype(str)
       .unique()
   )
 
   selected_categories = st.sidebar.multiselect(
-      "Märksõna kategooriad",
+      "Märksõna kategooria",
       all_categories
+  )
+
+
+# MÄRKSÕNA VALIKUD
+
+  marksona_options = get_marksona_options(
+      marksoned,
+      current_df=df
   )
 
   if selected_categories:
 
-      keywords_filtered = keywords_filtered[
-          keywords_filtered["Märksõna"]
-          .isin(selected_categories)
-      ]
-
-  # MÄRKSÕNAD
-
-  all_keywords = sorted(
-      keywords_filtered["Märksõna"]
-      .dropna()
-      .astype(str)
-      .unique()
-  )
-
-  selected_keywords = st.sidebar.multiselect(
-      "Vali märksõnad",
-      all_keywords
-  )
-
-  if selected_keywords:
-
-      selected_pids = keywords_filtered[
-          keywords_filtered["Märksõna"]
-          .isin(selected_keywords)
-      ]["PID"].astype(str).str.strip()
-
-      df = df[
-          df["PID"]
+      allowed_keywords = (
+          marksona_kategooriad[
+              marksona_kategooriad["Kategooria"]
+              .isin(selected_categories)
+          ]["Märksõna"]
+          .dropna()
           .astype(str)
-          .str.strip()
-          .isin(selected_pids)
+          .unique()
+      )
+
+      marksona_options = [
+          x for x in marksona_options
+          if x in allowed_keywords
       ]
+
+
+# MÄRKSÕNA FILTER
+
+  selected_marksonad = st.sidebar.multiselect(
+      "Vali märksõnad",
+      options=marksona_options,
+      max_selections=5,
+      placeholder="Vali märksõnad"
+  )
+
+  if len(selected_marksonad) > 1:
+
+      marksona_logic = st.sidebar.radio(
+          "Märksõnade loogika",
+          options=["OR", "AND"],
+          horizontal=True
+      )
+
+  else:
+      marksona_logic = "OR"
+
+
+  df = filter_by_marksonad(
+      fotod_df=df,
+      marksoned_df=marksoned,
+      selected_marksonad=selected_marksonad,
+      logic=marksona_logic
+  )
 # KPI CARDS
   cards = [
       ("Fotode arv", f"{len(df):,}"),
