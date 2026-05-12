@@ -181,39 +181,118 @@ with tab1:
           df["PID"].astype(str).str.strip().isin(selected_pids)
       ]
 
-# MÄRKSÕNADE SIDEBAR
+# LAEN ISIKUD FOTOL TABELI
+
+  people_df = pd.read_excel(
+      "ERA_fotod_250426.xlsx",
+      sheet_name="isikud_fotol_pikk"
+  )
+
+  people_df.columns = people_df.columns.str.strip()
+
+  people_df["PID"] = people_df["PID"].astype(str).str.strip()
+
+# ISIK FOTOL SIDEBAR
+
   filtered_pids = df["PID"].astype(str).str.strip().unique()
 
-  master_filtered_sidebar = master[
-      master["PID"].astype(str).str.strip().isin(filtered_pids)
+  people_filtered = people_df[
+      people_df["PID"].astype(str).str.strip().isin(filtered_pids)
   ].copy()
 
-  all_keywords = (
-      master_filtered_sidebar["ERA märksõnad (koondatud)"]
+  all_people = sorted(
+      people_filtered["Isik"]
       .dropna()
       .astype(str)
-      .str.split(",")
-      .explode()
+      .unique()
+  )
+
+  selected_people = st.sidebar.multiselect(
+      "Isik fotol",
+      all_people
+  )
+
+  if selected_people:
+
+      selected_pids = people_filtered[
+          people_filtered["Isik"]
+          .isin(selected_people)
+      ]["PID"].astype(str).str.strip()
+
+      df = df[
+          df["PID"].astype(str).str.strip().isin(selected_pids)
+      ]
+
+
+# MÄRKSÕNADE KATEGOORIAD
+
+  keywords_df = pd.read_excel(
+      "ERA_fotod_250426.xlsx",
+      sheet_name="märksõnad_pikk"
+  )
+
+  keywords_df.columns = keywords_df.columns.str.strip()
+
+  keywords_df["PID"] = (
+      keywords_df["PID"]
+      .astype(str)
       .str.strip()
   )
 
-  unique_keywords = sorted(all_keywords.unique())
+  filtered_pids = df["PID"].astype(str).str.strip()
 
-  search_keyword = st.sidebar.text_input("Otsi märksõna")
+  keywords_filtered = keywords_df[
+      keywords_df["PID"].isin(filtered_pids)
+  ].copy()
 
-  if search_keyword:
-      filtered_keyword_options = [
-          kw for kw in unique_keywords
-          if search_keyword.lower() in kw.lower()
+  # KATEGOORIAD
+
+  all_categories = sorted(
+      keywords_filtered["Märksõna"]
+      .dropna()
+      .astype(str)
+      .unique()
+  )
+
+  selected_categories = st.sidebar.multiselect(
+      "Märksõna kategooriad",
+      all_categories
+  )
+
+  if selected_categories:
+
+      keywords_filtered = keywords_filtered[
+          keywords_filtered["Märksõna"]
+          .isin(selected_categories)
       ]
-  else:
-      filtered_keyword_options = unique_keywords
+
+  # MÄRKSÕNAD
+
+  all_keywords = sorted(
+      keywords_filtered["Märksõna"]
+      .dropna()
+      .astype(str)
+      .unique()
+  )
 
   selected_keywords = st.sidebar.multiselect(
       "Vali märksõnad",
-      filtered_keyword_options
+      all_keywords
   )
 
+  if selected_keywords:
+
+      selected_pids = keywords_filtered[
+          keywords_filtered["Märksõna"]
+          .isin(selected_keywords)
+      ]["PID"].astype(str).str.strip()
+
+      df = df[
+          df["PID"]
+          .astype(str)
+          .str.strip()
+          .isin(selected_pids)
+      ]
 # KPI CARDS
   cards = [
       ("Fotode arv", f"{len(df):,}"),
