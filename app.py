@@ -139,8 +139,49 @@ with tab1:
   if selected:
       df = df[df["Kihelkond"].isin(selected)]
 
-# MÄRKSÕNADE SIDEBAR
+# ASUKOHT SIDEBAR
+  selected_places = st.sidebar.multiselect(
+      "Täpne asukoht",
+      sorted(df["Koht täpsemalt"].dropna().unique()),
+      key="asukoht_filter"
+  )
 
+  if selected_places:
+      df = df[df["Koht täpsemalt"].isin(selected_places)]
+
+      #### KUJUTATUD ANDMED ###
+
+# FOTOGRAAF SIDEBAR
+  filtered_pids = df["PID"].astype(str).str.strip().unique()
+
+  master_filtered_photographers = master[
+      master["PID"].astype(str).str.strip().isin(filtered_pids)
+  ].copy()
+
+  all_photographers = sorted(
+      master_filtered_photographers["Fotograaf (puhastatud)"]
+      .dropna()
+      .astype(str)
+      .unique()
+  )
+
+  selected_photographers = st.sidebar.multiselect(
+      "Fotograaf",
+      all_photographers
+  )
+
+  if selected_photographers:
+
+      selected_pids = master_filtered_photographers[
+          master_filtered_photographers["Fotograaf (puhastatud)"]
+          .isin(selected_photographers)
+      ]["PID"].astype(str).str.strip()
+
+      df = df[
+          df["PID"].astype(str).str.strip().isin(selected_pids)
+      ]
+
+# MÄRKSÕNADE SIDEBAR
   filtered_pids = df["PID"].astype(str).str.strip().unique()
 
   master_filtered_sidebar = master[
@@ -245,18 +286,6 @@ with tab1:
   cards_html += "</div>"
 
   components.html(cards_html, height=200, scrolling=False)
-
-  # ASUKOHT SIDEBAR
-  selected_places = st.sidebar.multiselect(
-      "Täpne asukoht",
-      sorted(df["Koht täpsemalt"].dropna().unique()),
-      key="asukoht_filter"
-  )
-
-  if selected_places:
-      df = df[df["Koht täpsemalt"].isin(selected_places)]
-
-      #### KUJUTATUD ANDMED ###
 
   st.markdown("---")
 
