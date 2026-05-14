@@ -1202,44 +1202,47 @@ with tab3:
   )
 
 with tab4:
-    st.header("Isikute analüüs")
-    st.caption(
-        "Fotodel kujutatud isikute sagedus ja seosed."
-    )
+  st.header("Isikute analüüs")
+  st.caption(
+      "Fotodel kujutatud isikute sagedus ja seosed."
+  )
 
-    filtered_pids = (
-        df["PID"]
-        .astype(str)
-        .str.strip()
-        .unique()
-    )
+  filtered_pids = (
+      df["PID"]
+      .astype(str)
+      .str.strip()
+      .unique()
+  )
 
-    isikud_filtered = people_df[
-        people_df["PID"]
-        .astype(str)
-        .str.strip()
-        .isin(filtered_pids)
-    ].copy()
+  isikud_filtered = people_df[
+      people_df["PID"]
+      .astype(str)
+      .str.strip()
+      .isin(filtered_pids)
+  ].copy()
 
-    if isikud_filtered.empty:
+  if isikud_filtered.empty:
 
-        st.warning(
-            "Valitud filtritega isikuid ei leitud."
-        )
+      st.warning(
+          "Valitud filtritega isikuid ei leitud."
+      )
 
-    else:
-      st.markdown("---")
-      col1, col2 = st.columns(2)
+  else:
+# TOP ISIKUD + ISIKUPAARID
+    st.markdown("---")
+    col1, col2 = st.columns(2)
 
-# TOP ISIKUD
-      with col1:
+    # TOP ISIKUD
+    with col1:
+
         st.subheader("Kõige sagedasemad isikud")
 
         top_isik_n = st.slider(
             "Näita top N isikut",
+            5,
+            20,
             10,
-            50,
-            20
+            key="top_isikud_slider"
         )
 
         top_people = (
@@ -1276,81 +1279,86 @@ with tab4:
             use_container_width=True,
             config={"displayModeBar": False}
         )
-#TOP ISIKUPAARID
-        with col2:
-            st.subheader("Koos esinevad isikupaarid")
 
-            pair_counter = Counter()
 
-            grouped_people = (
-                isikud_filtered
-                .groupby("PID")["Isik"]
-                .apply(
-                    lambda x: sorted(
-                        set(
-                            x.dropna().astype(str)
-                        )
+    # TOP ISIKUPAARID
+
+    with col2:
+
+        st.subheader("Koos esinevad isikupaarid")
+
+        top_pair_n = st.slider(
+            "Näita top N isikupaari",
+            5,
+            15,
+            10,
+            key="top_isikupaarid_slider"
+        )
+
+        pair_counter = Counter()
+
+        grouped_people = (
+            isikud_filtered
+            .groupby("PID")["Isik"]
+            .apply(
+                lambda x: sorted(
+                    set(
+                        x.dropna().astype(str)
                     )
                 )
             )
+        )
 
-            for people in grouped_people:
+        for people in grouped_people:
 
-                if len(people) >= 2:
+            if len(people) >= 2:
 
-                    for pair in combinations(people, 2):
+                for pair in combinations(people, 2):
 
-                        pair_counter[pair] += 1
+                    pair_counter[pair] += 1
 
-                if pair_counter:
-                    top_pair_n = st.slider(
-                        "Näita top N isikupaari",
-                        5,
-                        30,
-                        15,
-                        key="isikupaaride_slider_tab4_pairs_unique"
-                )
+        pair_data = [
+            {
+                "Isikupaar": f"{a} + {b}",
+                "Koosesinemised": count
+            }
+            for (a, b), count in pair_counter.most_common(top_pair_n)
+        ]
 
-            pair_data = [
-                {
-                    "Isikupaar": f"{a} + {b}",
-                    "Koosesinemised": count
-                }
-                for (a, b), count in pair_counter.most_common(top_pair_n)
-            ]
+        pair_df = pd.DataFrame(pair_data)
 
-            pair_df = pd.DataFrame(pair_data)
+        if pair_df.empty:
 
-            if pair_df.empty:
+            st.info(
+                "Koosesinevaid isikupaare ei leitud."
+            )
 
-                st.info(
-                    "Koosesinevaid isikupaare ei leitud."
-                )
+        else:
 
-            else:
+            fig_pairs = px.bar(
+                pair_df,
+                x="Koosesinemised",
+                y="Isikupaar",
+                orientation="h",
+                color="Koosesinemised",
+                color_continuous_scale="Tealgrn"
+            )
 
-                fig_pairs = px.bar(
-                    pair_df,
-                    x="Koosesinemised",
-                    y="Isikupaar",
-                    orientation="h",
-                    color="Koosesinemised",
-                    color_continuous_scale="Tealgrn"
-                )
+            fig_pairs.update_layout(
+                yaxis=dict(categoryorder="total ascending"),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                coloraxis_showscale=False,
+                height=450
+            )
 
-                fig_pairs.update_layout(
-                    yaxis=dict(categoryorder="total ascending"),
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    coloraxis_showscale=False,
-                    height=450
-                )
+            st.plotly_chart(
+                fig_pairs,
+                use_container_width=True,
+                config={"displayModeBar": False}
+            )
 
-                st.plotly_chart(
-                    fig_pairs,
-                    use_container_width=True,
-                    config={"displayModeBar": False}
-                )
+
 
 # ISIKU OTSING
 
