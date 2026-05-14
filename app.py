@@ -491,6 +491,24 @@ with tab1:
           if x in allowed_keywords
       ]
 
+      matched_pids = (
+        marksona_kategooriad[
+            marksona_kategooriad["Kategooria"]
+            .isin(selected_categories)
+        ]["PID"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .unique()
+      )
+
+      df = df[
+          df["PID"]
+          .astype(str)
+          .str.strip()
+          .isin(matched_pids)
+      ]
+
 
 # MÄRKSÕNA FILTER
 
@@ -1562,7 +1580,7 @@ with tab4:
             config={"displayModeBar": False}
         )
 
-  # VÕRGUSTIK
+# VÕRGUSTIK
 
     st.markdown("---")
     st.subheader("Isikute ja fotograafide võrgustikud")
@@ -1573,7 +1591,7 @@ with tab4:
         "kes on märgitud fotograafi ja pildil oleva isikuna."
     )
 
-    # VÕRGUSTIKU TÜÜP
+# VÕRGUSTIKU TÜÜP
 
     network_type = st.radio(
         "Vali võrgustiku tüüp",
@@ -1583,7 +1601,7 @@ with tab4:
         ]
     )
 
-    # FILTRID
+# FILTRID
 
     min_edges = st.slider(
         "Minimaalne seoste arv",
@@ -1599,7 +1617,7 @@ with tab4:
         50
     )
 
-    # ANDMED
+# ANDMED
 
     network_df = isikud_filtered.copy()
 
@@ -1617,7 +1635,7 @@ with tab4:
 
     G = nx.Graph()
 
-    # ISIK-ISIK VÕRGUSTIK
+# ISIK-ISIK VÕRGUSTIK
 
     if network_type == "Isik–isik: kes on koos pildil":
 
@@ -1676,7 +1694,7 @@ with tab4:
                 weight=count
             )
 
-    # FOTOGRAAF-ISIK VÕRGUSTIK
+# FOTOGRAAF-ISIK VÕRGUSTIK
 
     else:
 
