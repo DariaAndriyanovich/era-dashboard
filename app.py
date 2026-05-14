@@ -4,6 +4,8 @@ import pandas as pd
 import plotly.express as px
 import ssl
 import json
+from collections import Counter
+from itertools import combinations
 
 
 ### LEHE STIIL JA SEADISTUSED ###
@@ -46,10 +48,11 @@ st.markdown("""
 
 ### TABIDE LOOMINE ###
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4,tab5 = st.tabs([
     "Ajaline analüüs",
     "Kaart",
     "Märksõnad",
+    "Isikud",
     "Andmed"
 
 ])
@@ -1199,6 +1202,305 @@ with tab3:
   )
 
 with tab4:
+    st.header("Isikute analüüs")
+    st.caption(
+        "Fotodel kujutatud isikute sagedus ja seosed."
+    )
+
+    filtered_pids = (
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
+
+    isikud_filtered = people_df[
+        people_df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(filtered_pids)
+    ].copy()
+
+    if isikud_filtered.empty:
+
+        st.warning(
+            "Valitud filtritega isikuid ei leitud."
+        )
+
+    else:
+      st.markdown("---")
+      col1, col2 = st.columns(2)
+
+# TOP ISIKUD
+      with col1:
+        st.subheader("Kõige sagedasemad isikud")
+
+        top_isik_n = st.slider(
+            "Näita top N isikut",
+            10,
+            50,
+            20
+        )
+
+        top_people = (
+            isikud_filtered["Isik"]
+            .value_counts()
+            .head(top_isik_n)
+            .reset_index()
+        )
+
+        top_people.columns = [
+            "Isik",
+            "Fotode arv"
+        ]
+
+        fig_people = px.bar(
+            top_people,
+            x="Fotode arv",
+            y="Isik",
+            orientation="h",
+            color="Fotode arv",
+            color_continuous_scale="Tealgrn"
+        )
+
+        fig_people.update_layout(
+            yaxis=dict(categoryorder="total ascending"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False,
+            height=450
+        )
+
+        st.plotly_chart(
+            fig_people,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+#TOP ISIKUPAARID
+        with col2:
+            st.subheader("Koos esinevad isikupaarid")
+
+            pair_counter = Counter()
+
+            grouped_people = (
+                isikud_filtered
+                .groupby("PID")["Isik"]
+                .apply(
+                    lambda x: sorted(
+                        set(
+                            x.dropna().astype(str)
+                        )
+                    )
+                )
+            )
+
+            for people in grouped_people:
+
+                if len(people) >= 2:
+
+                    for pair in combinations(people, 2):
+
+                        pair_counter[pair] += 1
+
+                if pair_counter:
+                    top_pair_n = st.slider(
+                        "Näita top N isikupaari",
+                        5,
+                        30,
+                        15,
+                        key="isikupaaride_slider_tab4_pairs_unique"
+                )
+
+            pair_data = [
+                {
+                    "Isikupaar": f"{a} + {b}",
+                    "Koosesinemised": count
+                }
+                for (a, b), count in pair_counter.most_common(top_pair_n)
+            ]
+
+            pair_df = pd.DataFrame(pair_data)
+
+            if pair_df.empty:
+
+                st.info(
+                    "Koosesinevaid isikupaare ei leitud."
+                )
+
+            else:
+
+                fig_pairs = px.bar(
+                    pair_df,
+                    x="Koosesinemised",
+                    y="Isikupaar",
+                    orientation="h",
+                    color="Koosesinemised",
+                    color_continuous_scale="Tealgrn"
+                )
+
+                fig_pairs.update_layout(
+                    yaxis=dict(categoryorder="total ascending"),
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    coloraxis_showscale=False,
+                    height=450
+                )
+
+                st.plotly_chart(
+                    fig_pairs,
+                    use_container_width=True,
+                    config={"displayModeBar": False}
+                )
+
+# ISIKU OTSING
+
+        st.markdown("---")
+        st.subheader("Isiku otsing")
+
+        selected_person = st.selectbox(
+            "Vali isik",
+            sorted(
+                isikud_filtered["Isik"]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
+        )
+
+        person_pids = (
+            isikud_filtered[
+                isikud_filtered["Isik"] == selected_person
+            ]["PID"]
+            .astype(str)
+            .str.strip()
+            .unique()
+        )
+
+        person_df = df[
+            df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(person_pids)
+        ]
+
+        st.metric(
+            "Fotode arv",
+            len(person_df)
+        )
+
+        show_cols = [
+            "PID",
+            "Aasta",
+            "Kihelkond",
+            "Koht täpsemalt",
+            "Sisu kirjeldus"
+        ]
+
+        existing_cols = [
+            c for c in show_cols
+            if c in person_df.columns
+        ]
+
+        st.dataframe(
+            person_df[existing_cols].head(100),
+            use_container_width=True
+        )
+#ISIKUD AJAS
+    st.markdown("---")
+    st.subheader("Isik ajas")
+
+    person_years = (
+        person_df[
+            person_df["Aasta"].notna()
+        ]
+        .groupby("Aasta")
+        .size()
+        .reset_index(name="Fotode arv")
+    )
+
+    if person_years["Aasta"].nunique() > 1:
+
+        fig_person_time = px.line(
+            person_years,
+            x="Aasta",
+            y="Fotode arv",
+            markers=True
+        )
+
+        fig_person_time.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            height=450
+        )
+
+        st.plotly_chart(
+            fig_person_time,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+
+    else:
+
+        st.info(
+            "Ajatelje kuvamiseks "
+            "pole piisavalt erinevaid aastaid."
+        )
+# KOOS ESINEVAD ISIKUD
+
+        st.markdown("---")
+        st.subheader("Koos esinevad isikud")
+
+        related_people = isikud_filtered[
+            isikud_filtered["PID"]
+            .isin(person_pids)
+        ]
+
+        related_counts = (
+            related_people[
+                related_people["Isik"] != selected_person
+            ]["Isik"]
+            .value_counts()
+            .head(15)
+            .reset_index()
+        )
+
+        if not related_counts.empty:
+
+            related_counts.columns = [
+                "Isik",
+                "Koosesinemised"
+            ]
+
+            fig_related_people = px.bar(
+                related_counts,
+                x="Koosesinemised",
+                y="Isik",
+                orientation="h",
+                color="Koosesinemised",
+                color_continuous_scale="Tealgrn"
+            )
+
+            fig_related_people.update_layout(
+                yaxis=dict(categoryorder="total ascending"),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                coloraxis_showscale=False,
+                height=500
+            )
+
+            st.plotly_chart(
+                fig_related_people,
+                use_container_width=True,
+                config={"displayModeBar": False}
+            )
+
+        else:
+
+            st.info(
+                "Selle isikuga seotud teisi inimesi ei leitud."
+            )
+
+with tab5:
 # ANDMETE TABEL CSV KUJUL
   st.markdown("### Näidis andmestikust")
   st.caption("Valik ERA fotoarhiivi andmestikust.")
