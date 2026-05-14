@@ -1742,6 +1742,17 @@ with tab4:
             font_color="black"
         )
 
+        net.options.interaction = {
+            "hover": True,
+            "navigationButtons": True,
+            "keyboard": True,
+            "multiselect": False
+        }
+
+        net.options.configure = {
+            "enabled": False
+        }
+
         # SÕLMED
 
         for node in G.nodes():
@@ -1788,14 +1799,6 @@ with tab4:
           "nodes": {
             "font": {
               "size": 6
-            },
-            "chosen": {
-              "node": {
-                "color": "#ff6b6b"
-              },
-              "label": {
-                "color": "#000000"
-              }
             }
           },
 
@@ -1827,33 +1830,15 @@ with tab4:
 
           "interaction": {
             "hover": true,
-            "dragNodes": true,
-            "dragView": true,
-            "zoomView": true,
             "navigationButtons": true,
-            "selectConnectedEdges": true
+            "keyboard": true,
+            "selectConnectedEdges": true,
+            "hoverConnectedEdges": true
           }
         }
         """)
 
         html = net.generate_html()
-
-        html = html.replace(
-            "network.fit();",
-            """
-            network.moveTo({
-                scale: 1.8
-            })
-
-            ;
-
-            network.once("stabilizationIterationsDone", function () {
-                network.setOptions({
-                    physics: false
-                });
-            });
-            """
-        )
 
         components.html(
             html,
