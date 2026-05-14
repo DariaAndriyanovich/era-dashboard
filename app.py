@@ -6,7 +6,9 @@ import ssl
 import json
 from collections import Counter
 from itertools import combinations
-
+import networkx as nx
+from pyvis.network import Network
+import tempfile
 
 ### LEHE STIIL JA SEADISTUSED ###
 st.set_page_config(
@@ -1457,6 +1459,7 @@ with tab4:
         person_df[existing_cols].head(100),
         use_container_width=True
     )
+
 #ISIKUD AJAS
     st.markdown("---")
     st.subheader("Isik ajas")
@@ -1482,7 +1485,7 @@ with tab4:
         fig_person_time.update_layout(
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            height=450
+            height=250
         )
 
         st.plotly_chart(
@@ -1497,60 +1500,365 @@ with tab4:
             "Ajatelje kuvamiseks "
             "pole piisavalt erinevaid aastaid."
         )
+
 # KOOS ESINEVAD ISIKUD
+    st.markdown("---")
+    st.subheader("Koos esinevad isikud")
 
-        st.markdown("---")
-        st.subheader("Koos esinevad isikud")
+    related_people = isikud_filtered[
+        isikud_filtered["PID"]
+        .astype(str)
+        .isin(person_pids)
+    ].copy()
 
-        related_people = isikud_filtered[
-            isikud_filtered["PID"]
-            .isin(person_pids)
-        ]
+    related_people["Isik"] = (
+        related_people["Isik"]
+        .astype(str)
+        .str.strip()
+    )
 
-        related_counts = (
-            related_people[
-                related_people["Isik"] != selected_person
-            ]["Isik"]
-            .value_counts()
-            .head(15)
-            .reset_index()
+    related_counts = (
+        related_people[
+            related_people["Isik"] != selected_person
+        ]["Isik"]
+        .value_counts()
+        .head(15)
+        .reset_index()
+    )
+
+    related_counts.columns = [
+        "Isik",
+        "Koosesinemised"
+    ]
+
+    if related_counts.empty:
+
+        st.info(
+            "Selle isikuga seotud teisi inimesi ei leitud."
         )
 
-        if not related_counts.empty:
+    else:
 
-            related_counts.columns = [
-                "Isik",
-                "Koosesinemised"
-            ]
+        fig_related_people = px.bar(
+            related_counts,
+            x="Koosesinemised",
+            y="Isik",
+            orientation="h",
+            color="Koosesinemised",
+            color_continuous_scale="Tealgrn"
+        )
 
-            fig_related_people = px.bar(
-                related_counts,
-                x="Koosesinemised",
-                y="Isik",
-                orientation="h",
-                color="Koosesinemised",
-                color_continuous_scale="Tealgrn"
+        fig_related_people.update_layout(
+            yaxis=dict(categoryorder="total ascending"),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False,
+            height=450
+        )
+
+        st.plotly_chart(
+            fig_related_people,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+
+  # VÕRGUSTIK
+
+    st.markdown("---")
+    st.subheader("Isikute ja fotograafide võrgustikud")
+
+    st.caption(
+        "Võrgustik näitab andmestikus nähtavaid "
+        "koosesinemisi: kes on samal fotol või "
+        "kes on märgitud fotograafi ja pildil oleva isikuna."
+    )
+
+    # VÕRGUSTIKU TÜÜP
+
+    network_type = st.radio(
+        "Vali võrgustiku tüüp",
+        [
+            "Isik–isik: kes on koos pildil",
+            "Fotograaf–isik: kes keda pildistas"
+        ]
+    )
+
+    # FILTRID
+
+    min_edges = st.slider(
+        "Minimaalne seoste arv",
+        1,
+        10,
+        2
+    )
+
+    max_edges = st.slider(
+        "Maksimaalne kuvatavate seoste arv",
+        20,
+        250,
+        50
+    )
+
+    # ANDMED
+
+    network_df = isikud_filtered.copy()
+
+    network_df["Isik"] = (
+        network_df["Isik"]
+        .astype(str)
+        .str.strip()
+    )
+
+    network_df["Fotograaf"] = (
+        network_df["Fotograaf"]
+        .astype(str)
+        .str.strip()
+    )
+
+    G = nx.Graph()
+
+    # ISIK-ISIK VÕRGUSTIK
+
+    if network_type == "Isik–isik: kes on koos pildil":
+
+        grouped_people = (
+            network_df
+            .groupby("PID")["Isik"]
+            .apply(
+                lambda x: sorted(
+                    set(
+                        x.dropna()
+                    )
+                )
+            )
+        )
+
+        pair_counter = {}
+
+        for people in grouped_people:
+
+            if len(people) >= 2:
+
+                for pair in combinations(people, 2):
+
+                    if pair not in pair_counter:
+
+                        pair_counter[pair] = 0
+
+                    pair_counter[pair] += 1
+
+        sorted_pairs = sorted(
+            pair_counter.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        sorted_pairs = [
+            pair for pair in sorted_pairs
+            if pair[1] >= min_edges
+        ][:max_edges]
+
+        for (a, b), count in sorted_pairs:
+
+            G.add_node(
+                a,
+                group="isik"
             )
 
-            fig_related_people.update_layout(
-                yaxis=dict(categoryorder="total ascending"),
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                coloraxis_showscale=False,
-                height=500
+            G.add_node(
+                b,
+                group="isik"
             )
 
-            st.plotly_chart(
-                fig_related_people,
-                use_container_width=True,
-                config={"displayModeBar": False}
+            G.add_edge(
+                a,
+                b,
+                weight=count
             )
 
-        else:
+    # FOTOGRAAF-ISIK VÕRGUSTIK
 
-            st.info(
-                "Selle isikuga seotud teisi inimesi ei leitud."
+    else:
+
+        edge_counts = (
+            network_df
+            .dropna(
+                subset=["Fotograaf", "Isik"]
             )
+            .groupby(
+                ["Fotograaf", "Isik"]
+            )
+            .size()
+            .reset_index(name="Kordused")
+        )
+
+        edge_counts = edge_counts[
+            edge_counts["Kordused"] >= min_edges
+        ]
+
+        edge_counts = edge_counts.sort_values(
+            "Kordused",
+            ascending=False
+        ).head(max_edges)
+
+        for _, row in edge_counts.iterrows():
+
+            fotograaf = row["Fotograaf"]
+            isik = row["Isik"]
+            kaal = row["Kordused"]
+
+            G.add_node(
+                fotograaf,
+                group="fotograaf"
+            )
+
+            G.add_node(
+                isik,
+                group="isik"
+            )
+
+            G.add_edge(
+                fotograaf,
+                isik,
+                weight=kaal
+            )
+
+    # TÜHI VÕRGUSTIK
+
+    if len(G.nodes()) == 0:
+
+        st.info(
+            "Valitud filtritega võrgustikku ei leitud."
+        )
+
+    # PYVIS
+
+    else:
+
+        net = Network(
+            height="900px",
+            width="100%",
+            bgcolor="#ffffff",
+            font_color="black"
+        )
+
+        # SÕLMED
+
+        for node in G.nodes():
+
+            group = G.nodes[node].get("group")
+
+            if group == "fotograaf":
+
+                net.add_node(
+                    node,
+                    label=node,
+                    color="#199890",
+                    size=10
+                )
+
+            else:
+
+                net.add_node(
+                    node,
+                    label=node,
+                    color="#90d287",
+                    size=6
+                )
+
+        # SERVAD
+
+        for source, target, data in G.edges(data=True):
+
+            net.add_edge(
+                source,
+                target,
+                value=data["weight"],
+                color="rgba(120,120,120,0.25)"
+            )
+
+        # OPTIONS
+
+        net.set_options("""
+        {
+          "layout": {
+            "improvedLayout": true
+          },
+
+          "nodes": {
+            "font": {
+              "size": 6
+            },
+            "chosen": {
+              "node": {
+                "color": "#ff6b6b"
+              },
+              "label": {
+                "color": "#000000"
+              }
+            }
+          },
+
+          "edges": {
+            "smooth": false,
+            "color": {
+              "color": "rgba(120,120,120,0.25)",
+              "highlight": "#ff6b6b"
+            },
+            "chosen": true
+          },
+
+          "physics": {
+            "enabled": true,
+
+            "stabilization": {
+              "enabled": true,
+              "iterations": 150
+            },
+
+            "barnesHut": {
+              "gravitationalConstant": -5000,
+              "centralGravity": 0.25,
+              "springLength": 70,
+              "springConstant": 0.04,
+              "damping": 0.8
+            }
+          },
+
+          "interaction": {
+            "hover": true,
+            "dragNodes": true,
+            "dragView": true,
+            "zoomView": true,
+            "navigationButtons": true,
+            "selectConnectedEdges": true
+          }
+        }
+        """)
+
+        html = net.generate_html()
+
+        html = html.replace(
+            "network.fit();",
+            """
+            network.moveTo({
+                scale: 1.8
+            })
+
+            ;
+
+            network.once("stabilizationIterationsDone", function () {
+                network.setOptions({
+                    physics: false
+                });
+            });
+            """
+        )
+
+        components.html(
+            html,
+            height=950
+        )
 
 with tab5:
 # ANDMETE TABEL CSV KUJUL
