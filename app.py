@@ -865,8 +865,8 @@ with tab2:
 
 with tab3:
 #MÄRKSÕNAD
-  st.header("Kõige sagedasemad märksõnad")
-  st.caption("ERA fotoarhiivi enim kasutatud märksõnad")
+  st.header("Fotokogu temaatiline analüüs")
+  st.caption("Ülevaade ERA fotoarhiivi märksõnadest ja kategooriatest.")
 
   filtered_pids = (
       df["PID"]
@@ -930,7 +930,60 @@ with tab3:
       st.warning("Valitud filtritega sobivaid märksõnu ei leitud.")
       st.stop()
 
+# TOP KATEGOORIAD
+  st.markdown("---")
+  st.subheader("Kõige sagedasemad kategooriad")
+
+  filtered_pids = (
+      df["PID"]
+      .astype(str)
+      .str.strip()
+      .unique()
+  )
+
+  filtered_categories = marksona_kategooriad[
+      marksona_kategooriad["PID"]
+      .astype(str)
+      .isin(filtered_pids)
+  ]
+
+  category_counts = (
+      filtered_categories["Kategooria"]
+      .value_counts()
+      .head(10)
+      .reset_index()
+  )
+
+  category_counts.columns = [
+      "Kategooria",
+      "Fotode arv"
+  ]
+
+  fig_categories = px.bar(
+      category_counts,
+      x="Fotode arv",
+      y="Kategooria",
+      orientation="h",
+      color="Fotode arv",
+      color_continuous_scale="Tealgrn"
+  )
+
+  fig_categories.update_layout(
+      yaxis=dict(categoryorder="total ascending"),
+      plot_bgcolor="rgba(0,0,0,0)",
+      paper_bgcolor="rgba(0,0,0,0)",
+      coloraxis_showscale=False,
+      height=500
+  )
+
+  st.plotly_chart(
+      fig_categories,
+      use_container_width=True,
+      config={"displayModeBar": False}
+  )
 # KÕIGE SAGEDAMASED 80 MÄRKSÕNA
+  st.markdown("---")
+  st.subheader("Kõige sagedasemad märksõnad")
   cards_html = """
   <div style="
       display:flex;
@@ -1024,6 +1077,7 @@ with tab3:
       f"mida esineb {keyword_counts.iloc[0]} korda."
   )
 # MÄRKSÕNA AJAS
+
   st.markdown("---")
   st.subheader("Märksõna ajas")
 
@@ -1032,12 +1086,33 @@ with tab3:
       keyword_counts.index
   )
 
-  keyword_data = master_filtered[
-      master_filtered["ERA märksõnad (koondatud)"]
-      .str.contains(selected_word, case=False, na=False)
+  selected_word_pids = (
+      marksoned[
+          marksoned["Märksõna"] == selected_word
+      ]["PID"]
+      .dropna()
+      .astype(str)
+      .str.strip()
+      .unique()
+  )
+
+  keyword_data = df[
+      df["PID"]
+      .astype(str)
+      .str.strip()
+      .isin(selected_word_pids)
   ].copy()
 
-  keyword_years = keyword_data.groupby("Aasta").size().reset_index(name="Fotode arv")
+  keyword_data = keyword_data[
+      keyword_data["Aasta"].notna()
+  ]
+
+  keyword_years = (
+      keyword_data
+      .groupby("Aasta")
+      .size()
+      .reset_index(name="Fotode arv")
+  )
 
   fig_keyword_time = px.line(
       keyword_years,
@@ -1056,35 +1131,37 @@ with tab3:
       use_container_width=True,
       config={"displayModeBar": False}
   )
+
 # MÄRKSÕNA SEOSED
   st.markdown("---")
   st.subheader("Seotud märksõnad")
 
-  related_keywords = (
-      keyword_data["ERA märksõnad (koondatud)"]
-      .dropna()
+  selected_pids = set(
+      marksoned[
+          marksoned["Märksõna"] == selected_word
+      ]["PID"]
       .astype(str)
-      .str.split(",")
   )
 
-  related_list = []
-
-  for row in related_keywords:
-      cleaned = [x.strip() for x in row]
-
-      if selected_word in cleaned:
-          related_list.extend(
-              [x for x in cleaned if x != selected_word]
-          )
+  related_df = marksoned[
+      marksoned["PID"]
+      .astype(str)
+      .isin(selected_pids)
+  ]
 
   related_counts = (
-      pd.Series(related_list)
+      related_df[
+          related_df["Märksõna"] != selected_word
+      ]["Märksõna"]
       .value_counts()
       .head(10)
       .reset_index()
   )
 
-  related_counts.columns = ["Märksõna", "Seose tugevus"]
+  related_counts.columns = [
+      "Märksõna",
+      "Seose tugevus"
+  ]
 
   fig_related = px.bar(
       related_counts,
