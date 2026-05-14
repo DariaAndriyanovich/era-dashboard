@@ -1046,6 +1046,11 @@ with tab3:
   st.markdown("---")
   st.markdown("### TOP 15 märksõna")
 
+  if len(keyword_counts) < 3:
+    st.info(
+        "Valitud filtritega on saadaval väga vähe märksõnu."
+    )
+
   top15 = keyword_counts.head(15).reset_index()
   top15.columns = ["Märksõna", "Fotode arv"]
 
@@ -1114,23 +1119,31 @@ with tab3:
       .reset_index(name="Fotode arv")
   )
 
-  fig_keyword_time = px.line(
-      keyword_years,
-      x="Aasta",
-      y="Fotode arv",
-      markers=True
-  )
+  if keyword_years["Aasta"].nunique() > 1:
 
-  fig_keyword_time.update_layout(
-      plot_bgcolor="rgba(0,0,0,0)",
-      paper_bgcolor="rgba(0,0,0,0)"
-  )
+      fig_keyword_time = px.line(
+          keyword_years,
+          x="Aasta",
+          y="Fotode arv",
+          markers=True
+      )
 
-  st.plotly_chart(
-      fig_keyword_time,
-      use_container_width=True,
-      config={"displayModeBar": False}
-  )
+      fig_keyword_time.update_layout(
+          plot_bgcolor="rgba(0,0,0,0)",
+          paper_bgcolor="rgba(0,0,0,0)"
+      )
+
+      st.plotly_chart(
+          fig_keyword_time,
+          use_container_width=True,
+          config={"displayModeBar": False}
+      )
+
+  else:
+
+      st.info(
+          "Ajatelje kuvamiseks on vaja rohkem erinevaid aastaid."
+      )
 
 # MÄRKSÕNA SEOSED
   st.markdown("---")
