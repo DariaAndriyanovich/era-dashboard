@@ -1406,57 +1406,57 @@ with tab4:
 
 # ISIKU OTSING
 
-        st.markdown("---")
-        st.subheader("Isiku otsing")
+    st.markdown("---")
+    st.subheader("Isiku otsing")
 
-        selected_person = st.selectbox(
-            "Vali isik",
-            sorted(
-                isikud_filtered["Isik"]
-                .dropna()
-                .astype(str)
-                .unique()
-            )
-        )
-
-        person_pids = (
-            isikud_filtered[
-                isikud_filtered["Isik"] == selected_person
-            ]["PID"]
+    selected_person = st.selectbox(
+        "Vali isik",
+        sorted(
+            isikud_filtered["Isik"]
+            .dropna()
             .astype(str)
-            .str.strip()
             .unique()
         )
+    )
 
-        person_df = df[
-            df["PID"]
-            .astype(str)
-            .str.strip()
-            .isin(person_pids)
-        ]
+    person_pids = (
+        isikud_filtered[
+            isikud_filtered["Isik"] == selected_person
+        ]["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
 
-        st.metric(
-            "Fotode arv",
-            len(person_df)
-        )
+    person_df = df[
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(person_pids)
+    ]
 
-        show_cols = [
-            "PID",
-            "Aasta",
-            "Kihelkond",
-            "Koht täpsemalt",
-            "Sisu kirjeldus"
-        ]
+    st.metric(
+        "Fotode arv",
+        len(person_df)
+    )
 
-        existing_cols = [
-            c for c in show_cols
-            if c in person_df.columns
-        ]
+    show_cols = [
+        "PID",
+        "Aasta",
+        "Kihelkond",
+        "Koht täpsemalt",
+        "Sisu kirjeldus"
+    ]
 
-        st.dataframe(
-            person_df[existing_cols].head(100),
-            use_container_width=True
-        )
+    existing_cols = [
+        c for c in show_cols
+        if c in person_df.columns
+    ]
+
+    st.dataframe(
+        person_df[existing_cols].head(100),
+        use_container_width=True
+    )
 #ISIKUD AJAS
     st.markdown("---")
     st.subheader("Isik ajas")
