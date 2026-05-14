@@ -1228,6 +1228,50 @@ with tab4:
       )
 
   else:
+    # KPI
+    k1, k2, k3, k4 = st.columns(4)
+
+    k1.metric(
+        "Unikaalseid isikuid",
+        isikud_filtered["Isik"]
+        .dropna()
+        .nunique()
+    )
+
+    k2.metric(
+        "Isikukirjeid kokku",
+        len(isikud_filtered)
+    )
+
+    k3.metric(
+        "Fotodel kokku",
+        len(
+            isikud_filtered["PID"]
+            .dropna()
+            .unique()
+        )
+    )
+    top_person = (
+    isikud_filtered["Isik"]
+    .value_counts()
+    )
+
+    if not top_person.empty:
+
+        top_name = top_person.index[0]
+        top_count = top_person.iloc[0]
+
+        top_display = f"{top_name} ({top_count})"
+
+    else:
+
+        top_display = "-"
+
+    k4.metric(
+    "Kõige sagedasem isik",
+    top_display
+    )
+
 # TOP ISIKUD + ISIKUPAARID
     st.markdown("---")
     col1, col2 = st.columns(2)
