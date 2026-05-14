@@ -1732,118 +1732,105 @@ with tab4:
         )
 
     # PYVIS
-
     else:
+      net = Network(
+          height="900px",
+          width="100%",
+          bgcolor="#ffffff",
+          font_color="black"
+      )
 
-        net = Network(
-            height="900px",
-            width="100%",
-            bgcolor="#ffffff",
-            font_color="black"
-        )
+    # SÕLMED
+    for node in G.nodes():
 
-        net.options.interaction = {
-            "hover": True,
-            "navigationButtons": True,
-            "keyboard": True,
-            "multiselect": False
-        }
+        group = G.nodes[node].get("group")
 
-        net.options.configure = {
-            "enabled": False
-        }
+        if group == "fotograaf":
 
-        # SÕLMED
+            net.add_node(
+                node,
+                label=node,
+                color="#199890",
+                size=10
+            )
 
-        for node in G.nodes():
+        else:
 
-            group = G.nodes[node].get("group")
+            net.add_node(
+                node,
+                label=node,
+                color="#90d287",
+                size=6
+            )
 
-            if group == "fotograaf":
+    # SERVAD
 
-                net.add_node(
-                    node,
-                    label=node,
-                    color="#199890",
-                    size=10
-                )
+    for source, target, data in G.edges(data=True):
 
-            else:
-
-                net.add_node(
-                    node,
-                    label=node,
-                    color="#90d287",
-                    size=6
-                )
-
-        # SERVAD
-
-        for source, target, data in G.edges(data=True):
+        if source in net.get_nodes() and target in net.get_nodes():
 
             net.add_edge(
                 source,
                 target,
                 value=data["weight"],
-                color="rgba(120,120,120,0.25)"
+                color={
+                    "color": "rgba(120,120,120,0.25)",
+                    "highlight": "#ff4d4d"
+                }
             )
 
-        # OPTIONS
+    # OPTIONS
 
-        net.set_options("""
-        {
-          "layout": {
-            "improvedLayout": true
-          },
+    net.set_options("""
+    {
+      "layout": {
+        "improvedLayout": true
+      },
 
-          "nodes": {
-            "font": {
-              "size": 6
-            }
-          },
-
-          "edges": {
-            "smooth": false,
-            "color": {
-              "color": "rgba(120,120,120,0.25)",
-              "highlight": "#ff6b6b"
-            },
-            "chosen": true
-          },
-
-          "physics": {
-            "enabled": true,
-
-            "stabilization": {
-              "enabled": true,
-              "iterations": 150
-            },
-
-            "barnesHut": {
-              "gravitationalConstant": -5000,
-              "centralGravity": 0.25,
-              "springLength": 70,
-              "springConstant": 0.04,
-              "damping": 0.8
-            }
-          },
-
-          "interaction": {
-            "hover": true,
-            "navigationButtons": true,
-            "keyboard": true,
-            "selectConnectedEdges": true,
-            "hoverConnectedEdges": true
-          }
+      "nodes": {
+        "font": {
+          "size": 6
         }
-        """)
+      },
 
-        html = net.generate_html()
+      "edges": {
+        "smooth": false
+      },
 
-        components.html(
-            html,
-            height=950
-        )
+      "physics": {
+        "enabled": true,
+
+        "stabilization": {
+          "enabled": true,
+          "iterations": 150
+        },
+
+        "barnesHut": {
+          "gravitationalConstant": -5000,
+          "centralGravity": 0.25,
+          "springLength": 70,
+          "springConstant": 0.04,
+          "damping": 0.8
+        }
+      },
+
+      "interaction": {
+        "hover": true,
+        "navigationButtons": true,
+        "keyboard": true,
+        "hoverConnectedEdges": true,
+        "selectConnectedEdges": true
+      }
+    }
+    """)
+
+    html = net.generate_html()
+
+    components.html(
+        html,
+        height=950
+    )
+
 
 with tab5:
 # ANDMETE TABEL CSV KUJUL
