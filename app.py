@@ -868,28 +868,42 @@ with tab3:
   st.header("Kõige sagedasemad märksõnad")
   st.caption("ERA fotoarhiivi enim kasutatud märksõnad")
 
-  filtered_pids = df["PID"].astype(str).str.strip().unique()
-
-  master_filtered = master[
-      master["PID"].astype(str).str.strip().isin(filtered_pids)
-  ].copy()
+  filtered_pids = (
+      df["PID"]
+      .astype(str)
+      .str.strip()
+      .unique()
+  )
 
   keywords_series = (
-        master_filtered["ERA märksõnad (koondatud)"]
-        .dropna()
-        .astype(str)
-        .str.split(",")
-        .explode()
-        .str.strip()
-    )
+      marksoned[
+          marksoned["PID"]
+          .isin(filtered_pids)
+      ]["Märksõna"]
+      .dropna()
+      .astype(str)
+      .str.strip()
+  )
 
-  if selected_keywords:
-      keywords = keywords_series[keywords_series.isin(selected_keywords)]
-  elif search_keyword:
+  if selected_marksonad:
+
       keywords = keywords_series[
-          keywords_series.str.contains(search_keyword, case=False, na=False)
+          keywords_series.isin(selected_marksonad)
       ]
+
+  elif selected_categories:
+
+      allowed_words = marksona_kategooriad[
+          marksona_kategooriad["Kategooria"]
+          .isin(selected_categories)
+      ]["Märksõna"].unique()
+
+      keywords = keywords_series[
+          keywords_series.isin(allowed_words)
+      ]
+
   else:
+
       keywords = keywords_series
 
   keyword_counts = keywords.value_counts().head(80)
