@@ -72,6 +72,8 @@ ml_data = pd.read_excel(
     "era_clip_KOIK_pildid_sigmoid.xlsx"
 )
 
+ml_raw = ml_data.copy()
+
 ml_data.columns = (
     ml_data.columns
     .astype(str)
@@ -83,6 +85,8 @@ ml_data = ml_data.rename(columns={
     "top1_score": "pred_top1_score",
     "margin_top1_top2": "confidence_margin_top1_top2"
 })
+
+ml_raw = ml_data.copy()
 
 ml_data["PID"] = (
     ml_data["PID"]
@@ -2447,11 +2451,19 @@ def safe_contains(series, text):
 
 with tab5:
 
-    st.header("🤖 ML märksõnade analüüs")
+    st.header(" ML märksõnade analüüs")
+
+    st.markdown("""
+    Kaks vaadet: põhifotodega seotud CLIP tulemused (PID olemas) ja kõik CLIP sh `image_only`.
+    """)
+
+    st.image(
+        "clip_yhe_pildi_selgitus.png",
+        use_container_width=True
+    )
 
     st.caption(
-        "CLIP mudeli prognoositud märksõnade "
-        "võrdlus olemasolevate kategooriatega."
+        "Näide: CLIP pildi ja tekstikategooriate sobivuse hindamine"
     )
 
     ml_df = df.copy()
@@ -2463,44 +2475,65 @@ with tab5:
     else:
 
         # KPI
+        st.markdown("---")
+
         c1, c2, c3, c4 = st.columns(4)
 
         c1.metric(
-            "ML kirjega fotod",
-            ml_df["pred_top1"].notna().sum()
+            "Fotosid filtris",
+            f"{len(df):,}"
         )
 
+        clip_total = len(ml_raw)
+
+        clip_pid = (
+            ml_raw["PID"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .ne("nan")
+            .sum()
+        )
+
+        image_only = clip_total - clip_pid
+
         c2.metric(
-            "Top1 kategooriaid",
-            ml_df["pred_top1"].dropna().nunique()
+            "CLIP kokku",
+            f"{clip_total:,}"
         )
 
         c3.metric(
-            "Keskmine top1 score",
-
-            round(
-                ml_df["pred_top1_score"].mean(),
-                3
-            )
-
-            if "pred_top1_score" in ml_df.columns
-            else "-"
+            "CLIP + PID",
+            f"{clip_pid:,}"
         )
 
         c4.metric(
-            "Tugevaid otsuseid",
-
-            (
-                ml_df["ML otsuse tugevus"]
-                .eq("tugev")
-                .sum()
-            )
-
-            if "ML otsuse tugevus" in ml_df.columns
-            else "-"
+            "Image-only",
+            f"{image_only:,}"
         )
 
+        st.markdown("""
+        `image_only` : pilt leiti kaustast, aga PID-i ei saanud külge panna.
+        """)
+
         st.markdown("---")
+
+        view_mode = st.radio(
+            "Vali ML-vaade",
+            [
+                "Põhifotodega seotud CLIP",
+                "Kõik CLIP, sh image-only"
+            ],
+            horizontal=True
+        )
+
+        if view_mode == "Kõik CLIP, sh image-only":
+
+            graph_df = ml_raw.copy()
+
+        else:
+
+            graph_df = ml_df.copy()
 
         # TOP KATEGOORIAD
         col1, col2 = st.columns(2)
@@ -2511,7 +2544,7 @@ with tab5:
             st.subheader("Olemasolevad kategooriad")
 
             existing = split_cats(
-                ml_df["Märksõna kategooria"]
+                graph_df["Märksõna kategooria"]
             ).value_counts().head(20)
 
             if not existing.empty:
@@ -2558,7 +2591,7 @@ with tab5:
             st.subheader("CLIP top1 kategooriad")
 
             clip_top = (
-                ml_df["pred_top1"]
+                graph_df["pred_top1"]
                 .dropna()
                 .astype(str)
                 .value_counts()
