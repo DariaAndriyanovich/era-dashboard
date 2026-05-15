@@ -96,6 +96,8 @@ ml_columns = [
 
     "PID",
 
+    "Märksõna kategooria",
+
     "pred_top1",
     "pred_top2",
     "pred_top3",
