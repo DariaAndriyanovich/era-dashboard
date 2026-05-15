@@ -54,8 +54,8 @@ st.markdown(
 
 ### TABIDE LOOMINE ###
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Ajaline analüüs", "Kaart", "Märksõnad", "Isikud", "Andmed"]
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    ["Ajaline analüüs", "Kaart", "Märksõnad", "Isikud", "ML analüüs", "Andmed"]
 )
 
 df = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_koordinaatidega")
@@ -65,6 +65,79 @@ df.columns = df.columns.str.strip()
 master = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_master")
 
 master.columns = master.columns.str.strip()
+
+# ML ANDMED
+
+ml_data = pd.read_excel(
+    "era_clip_KOIK_pildid_sigmoid.xlsx"
+)
+
+ml_data.columns = (
+    ml_data.columns
+    .astype(str)
+    .str.strip()
+)
+
+ml_data = ml_data.rename(columns={
+    "true_clusters": "Märksõna kategooria",
+    "top1_score": "pred_top1_score",
+    "margin_top1_top2": "confidence_margin_top1_top2"
+})
+
+ml_data["PID"] = (
+    ml_data["PID"]
+    .astype(str)
+    .str.strip()
+)
+
+# ainult vajalikud veerud
+
+ml_columns = [
+
+    "PID",
+
+    "pred_top1",
+    "pred_top2",
+    "pred_top3",
+    "pred_top4",
+    "pred_top5",
+
+    "pred_top1_score",
+
+    "confidence_margin_top1_top2",
+
+    "ML top3 koondskoor",
+
+    "ML otsuse tugevus"
+
+]
+
+existing_ml_cols = [
+
+    c for c in ml_columns
+    if c in ml_data.columns
+
+]
+
+ml_data = (
+    ml_data[existing_ml_cols]
+    .drop_duplicates(subset=["PID"])
+)
+
+# MERGE
+
+df["PID"] = (
+    df["PID"]
+    .astype(str)
+    .str.strip()
+)
+
+df = df.merge(
+    ml_data,
+    on="PID",
+    how="left"
+)
+
 df["PID"] = df["PID"].astype(str).str.strip()
 master["PID"] = master["PID"].astype(str).str.strip()
 
@@ -1085,11 +1158,11 @@ with tab2:
                     color="Fotode arv",
 
                     color_continuous_scale=[
-                        "#d780f2",
-                        "#9350B2",
-                        "#8d3c9f",
-                        "#773c9c",
-                        "#561d8c"
+                        "#d9f0ff",
+                        "#a6dcef",
+                        "#7dcfb6",
+                        "#5b8ff9",
+                        "#5a189a"
                     ],
 
                     hover_name="kaardi_piirkond",
@@ -1181,7 +1254,7 @@ with tab2:
                 except Exception:
                     pass
 
-    # ═════════ DETAIL VIEW ═════════
+    # DETAIL VIEW
     else:
 
         val = st.session_state["valitud_kihelkond"]
@@ -2305,6 +2378,473 @@ with tab4:
             html = net.generate_html()
 
             components.html(html, height=950)
+# ML ABIFUNKTSIOONID
+
+def split_cats(series):
+
+    if series is None:
+
+        return pd.Series(dtype="object")
+
+    return (
+        series
+        .dropna()
+        .astype(str)
+        .str.replace(";", ",", regex=False)
+        .str.replace("|", ",", regex=False)
+        .str.split(",")
+        .explode()
+        .astype(str)
+        .str.strip()
+    )
+
+
+def cat_match(row, manual_col, pred_cols):
+
+    manual = set()
+
+    if pd.notna(row.get(manual_col)):
+
+        manual = {
+
+            x.strip().lower()
+
+            for x in str(row[manual_col])
+            .replace(";", ",")
+            .replace("|", ",")
+            .split(",")
+
+            if x.strip()
+        }
+
+    preds = set()
+
+    for col in pred_cols:
+
+        if pd.notna(row.get(col)):
+
+            preds.add(
+                str(row[col]).strip().lower()
+            )
+
+    return len(manual & preds) > 0
+
+
+def safe_contains(series, text):
+
+    return (
+        series
+        .fillna("")
+        .astype(str)
+        .str.contains(
+            text,
+            case=False,
+            na=False
+        )
+    )
+
+with tab5:
+
+    st.header("🤖 ML märksõnade analüüs")
+
+    st.caption(
+        "CLIP mudeli prognoositud märksõnade "
+        "võrdlus olemasolevate kategooriatega."
+    )
+
+    ml_df = df.copy()
+
+    if "pred_top1" not in ml_df.columns:
+
+        st.warning("ML andmeid ei leitud.")
+
+    else:
+
+        # KPI
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric(
+            "ML kirjega fotod",
+            ml_df["pred_top1"].notna().sum()
+        )
+
+        c2.metric(
+            "Top1 kategooriaid",
+            ml_df["pred_top1"].dropna().nunique()
+        )
+
+        c3.metric(
+            "Keskmine top1 score",
+
+            round(
+                ml_df["pred_top1_score"].mean(),
+                3
+            )
+
+            if "pred_top1_score" in ml_df.columns
+            else "-"
+        )
+
+        c4.metric(
+            "Tugevaid otsuseid",
+
+            (
+                ml_df["ML otsuse tugevus"]
+                .eq("tugev")
+                .sum()
+            )
+
+            if "ML otsuse tugevus" in ml_df.columns
+            else "-"
+        )
+
+        st.markdown("---")
+
+        # TOP KATEGOORIAD
+        col1, col2 = st.columns(2)
+
+        # OLEMASOLEVAD KATEGOORIAD
+        with col1:
+
+            st.subheader("Olemasolevad kategooriad")
+
+            existing = split_cats(
+                ml_df["Märksõna kategooria"]
+            ).value_counts().head(20)
+
+            if not existing.empty:
+
+                fig_existing = px.bar(
+
+                    x=existing.values,
+
+                    y=existing.index,
+
+                    orientation="h",
+
+                    labels={
+                        "x": "Fotode arv",
+                        "y": "Kategooria"
+                    },
+
+                    color=existing.values,
+
+                    color_continuous_scale=[
+                        "#d9f0ff",
+                        "#a6dcef",
+                        "#5b8ff9",
+                        "#3f37c9"
+                    ]
+                )
+
+                fig_existing.update_layout(
+                    yaxis={"autorange": "reversed"},
+                    coloraxis_showscale=False,
+                    height=550,
+                    paper_bgcolor="white",
+                    plot_bgcolor="white"
+                )
+
+                st.plotly_chart(
+                    fig_existing,
+                    use_container_width=True
+                )
+
+        # CLIP TOP1
+        with col2:
+
+            st.subheader("CLIP top1 kategooriad")
+
+            clip_top = (
+                ml_df["pred_top1"]
+                .dropna()
+                .astype(str)
+                .value_counts()
+                .head(20)
+            )
+
+            if not clip_top.empty:
+
+                fig_clip = px.bar(
+
+                    x=clip_top.values,
+
+                    y=clip_top.index,
+
+                    orientation="h",
+
+                    labels={
+                        "x": "Fotode arv",
+                        "y": "CLIP kategooria"
+                    },
+
+                    color=clip_top.values,
+
+                    color_continuous_scale=[
+                        "#f3d1ff",
+                        "#d8a8ff",
+                        "#c77dff",
+                        "#7b2cbf"
+                    ]
+                )
+
+                fig_clip.update_layout(
+                    yaxis={"autorange": "reversed"},
+                    coloraxis_showscale=False,
+                    height=550,
+                    paper_bgcolor="white",
+                    plot_bgcolor="white"
+                )
+
+                st.plotly_chart(
+                    fig_clip,
+                    use_container_width=True
+                )
+
+        st.markdown("---")
+
+        # KATTUVUS
+        st.subheader("ML ja olemasolevate kategooriate kattuvus")
+
+        eval_df = ml_df[
+            ml_df["pred_top1"].notna()
+            &
+            ml_df["Märksõna kategooria"].notna()
+        ].copy()
+
+        if not eval_df.empty:
+
+            eval_df["top1_match"] = eval_df.apply(
+
+                lambda r: cat_match(
+                    r,
+                    "Märksõna kategooria",
+                    ["pred_top1"]
+                ),
+
+                axis=1
+            )
+
+            eval_df["top3_match"] = eval_df.apply(
+
+                lambda r: cat_match(
+                    r,
+                    "Märksõna kategooria",
+                    [
+                        "pred_top1",
+                        "pred_top2",
+                        "pred_top3"
+                    ]
+                ),
+
+                axis=1
+            )
+
+            eval_df["top5_match"] = eval_df.apply(
+
+                lambda r: cat_match(
+                    r,
+                    "Märksõna kategooria",
+                    [
+                        "pred_top1",
+                        "pred_top2",
+                        "pred_top3",
+                        "pred_top4",
+                        "pred_top5"
+                    ]
+                ),
+
+                axis=1
+            )
+
+            m1, m2, m3 = st.columns(3)
+
+            m1.metric(
+                "Top1 kattuvus",
+                f"{eval_df['top1_match'].mean() * 100:.1f}%"
+            )
+
+            m2.metric(
+                "Top3 kattuvus",
+                f"{eval_df['top3_match'].mean() * 100:.1f}%"
+            )
+
+            m3.metric(
+                "Top5 kattuvus",
+                f"{eval_df['top5_match'].mean() * 100:.1f}%"
+            )
+
+        st.markdown("---")
+
+        # HEATMAP
+        st.subheader("Kategooriate kattuvus")
+
+        heat = eval_df.copy()
+
+        heat["manual"] = (
+            heat["Märksõna kategooria"]
+            .astype(str)
+            .str.replace(";", ",", regex=False)
+            .str.replace("|", ",", regex=False)
+            .str.split(",")
+        )
+
+        pairs = heat.explode("manual")
+
+        pairs["manual"] = (
+            pairs["manual"]
+            .astype(str)
+            .str.strip()
+        )
+
+        pairs = pairs[
+            pairs["manual"] != ""
+        ]
+
+        mat = (
+            pairs
+            .groupby(["manual", "pred_top1"])
+            .size()
+            .reset_index(name="arv")
+        )
+
+        if not mat.empty:
+
+            fig_heat = px.density_heatmap(
+
+                mat,
+
+                x="pred_top1",
+
+                y="manual",
+
+                z="arv",
+
+                color_continuous_scale="Purples",
+
+                labels={
+                    "pred_top1": "CLIP top1",
+                    "manual": "Olemasolev kategooria",
+                    "arv": "Fotode arv"
+                }
+            )
+
+            fig_heat.update_layout(
+                height=650,
+                paper_bgcolor="white",
+                plot_bgcolor="white"
+            )
+
+            st.plotly_chart(
+                fig_heat,
+                use_container_width=True
+            )
+
+        st.markdown("---")
+
+        # TABEL
+        st.subheader("ML tulemuste tabel")
+
+        search_ml = st.text_input(
+            "🔍 Otsi ML tabelist"
+        )
+
+        show_ml = ml_df.copy()
+
+        if search_ml:
+
+            mask = pd.Series(
+                False,
+                index=show_ml.index
+            )
+
+            searchable_cols = [
+
+                "Sisu kirjeldus",
+                "Fotograaf",
+                "pred_top1",
+                "pred_top2",
+                "pred_top3",
+                "Märksõna kategooria"
+
+            ]
+
+            for col in searchable_cols:
+
+                if col in show_ml.columns:
+
+                    mask |= safe_contains(
+                        show_ml[col],
+                        search_ml
+                    )
+
+            show_ml = show_ml[mask]
+
+        if st.checkbox(
+            "Näita ainult ridu, kus top3 ei kattu"
+        ):
+
+            show_ml = show_ml[
+                ~show_ml.apply(
+                    lambda r: cat_match(
+                        r,
+                        "Märksõna kategooria",
+                        [
+                            "pred_top1",
+                            "pred_top2",
+                            "pred_top3"
+                        ]
+                    ),
+                    axis=1
+                )
+            ]
+
+        ml_cols = [
+
+            c for c in [
+
+                "PID",
+                "Fotograaf",
+                "Märksõna kategooria",
+                "pred_top1",
+                "pred_top2",
+                "pred_top3",
+                "pred_top1_score",
+                "confidence_margin_top1_top2",
+                "ML top3 koondskoor",
+                "ML otsuse tugevus",
+                "Sisu kirjeldus",
+                "failinimi"
+
+            ]
+
+            if c in show_ml.columns
+        ]
+
+        st.markdown(
+            f"Näidatakse **{len(show_ml):,}** rida"
+        )
+
+        st.dataframe(
+            show_ml[ml_cols].head(1000),
+            use_container_width=True,
+            hide_index=True,
+            height=650
+        )
+
+        # CSV
+        csv_ml = (
+            show_ml[ml_cols]
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+
+        st.download_button(
+            "⬇️ Lae ML tabel CSV-na",
+            data=csv_ml,
+            file_name="era_ml_tulemused.csv",
+            mime="text/csv"
+        )
 
 # ANDMETABELI LISAVEERUD
 
@@ -2380,7 +2920,7 @@ if not marksona_kategooriad.empty and "Kategooria" in marksona_kategooriad.colum
     df_table = df_table.drop(columns=["Märksõna kategooria"], errors="ignore")
     df_table = df_table.merge(categories_table, on="PID", how="left")
 
-with tab5:
+with tab6:
   #ANDMETABEL
     st.subheader("Andmetabel")
     st.caption(
