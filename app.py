@@ -100,10 +100,6 @@ df = df.merge(
     how="left"
 )
 
-df = df.drop(columns=["Aasta"], errors="ignore")
-
-df = df.merge(master_small, on="PID", how="left")
-
 df = df.drop_duplicates()
 
 df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
@@ -1205,7 +1201,7 @@ with tab2:
 
             st.rerun()
 
-        st.subheader(f"📍 {val}")
+        st.subheader(f" {val}")
 
         # FILTER
         det = df[
