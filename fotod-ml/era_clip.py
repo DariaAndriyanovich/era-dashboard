@@ -17,20 +17,15 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 # ============================================================
-# SEADED
+# 1. Seaded ja sisendfailid
 # ============================================================
 
 EXCEL_PATH = "ERA_märksõnad_ML.xlsx"
 SHEET_NAME = "ml_multihot_klastrid"
-
 IMAGE_ROOT = Path.home() / "Desktop" / "era_fotod"
-
 OUTPUT_EXCEL = "era_clip_KOIK_pildid_sigmoid.xlsx"
 
-# 500 = test
-# None = kõik pildid
-N_IMAGES = None
-
+N_IMAGES = None          # 500 = testvalim, None = kõik pildid
 RANDOM_SEED = 42
 TOP_K = 5
 FORCE_CPU = False
@@ -39,7 +34,7 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"}
 
 
 # ============================================================
-# PROMPTID
+# 2. CLIP-i tekstipromptid kategooriatele
 # ============================================================
 
 CLUSTER_PROMPTS = {
@@ -66,13 +61,21 @@ CLUSTER_PROMPTS = {
 
 
 # ============================================================
-# ABIFUNKTSIOONID
+# 3. Abifunktsioonid: Exceli read seotakse pildifailidega
+# ============================================================
+#
+# Kuna failinimed ja PID-d ei olnud alati ühtlases formaadis,
+# proovib kood tuletada võimalikud pildifaili nimed nii PID-st
+# kui ka olemasolevatest failinime veergudest.
+#
+# Seejärel ehitatakse kogu pildikaustast indeks, et leida
+# igale Exceli reale vastav pildifail.
+
 # ============================================================
 
 def pid_to_number(pid):
     if pd.isna(pid):
         return None
-
     nums = re.findall(r"\d+", str(pid))
     return int(nums[-1]) if nums else None
 
@@ -80,14 +83,7 @@ def pid_to_number(pid):
 def possible_image_names(row):
     names = set()
 
-    for col in [
-        "failinimi",
-        "Failinimi",
-        "filename",
-        "file_name",
-        "pildifail",
-        "Pildifail",
-    ]:
+    for col in ["failinimi", "Failinimi", "filename", "file_name", "pildifail", "Pildifail"]:
         if col in row.index and pd.notna(row[col]):
             raw_name = Path(str(row[col])).name.lower().strip()
             names.add(raw_name)
@@ -96,7 +92,7 @@ def possible_image_names(row):
             if n2 is not None:
                 for width in [5, 4, 0]:
                     stem = f"mf_{n2:0{width}d}" if width else f"mf_{n2}"
-                    for ext in [".jpg", ".jpeg", ".tif", ".tiff", ".png", ".webp"]:
+                    for ext in IMAGE_EXTENSIONS:
                         names.add(stem + ext)
 
     n = pid_to_number(row["PID"] if "PID" in row.index else None)
@@ -104,7 +100,7 @@ def possible_image_names(row):
     if n is not None:
         for width in [5, 4, 0]:
             stem = f"mf_{n:0{width}d}" if width else f"mf_{n}"
-            for ext in [".jpg", ".jpeg", ".tif", ".tiff", ".png", ".webp"]:
+            for ext in IMAGE_EXTENSIONS:
                 names.add(stem + ext)
 
     return names
@@ -112,12 +108,10 @@ def possible_image_names(row):
 
 def find_excel_file():
     path = Path(EXCEL_PATH)
-
     if path.exists():
         return path
 
     xlsx_files = list(Path(".").glob("*.xlsx"))
-
     if len(xlsx_files) == 1:
         print(f"Exceli täpne nimi ei klappinud, kasutan leitud faili: {xlsx_files[0]}")
         return xlsx_files[0]
@@ -127,7 +121,6 @@ def find_excel_file():
 
 def build_image_index(image_root):
     image_root = Path(image_root).expanduser()
-
     if not image_root.exists():
         raise FileNotFoundError(f"Pildikausta ei leitud: {image_root}")
 
@@ -135,7 +128,6 @@ def build_image_index(image_root):
 
     index = {}
     count = 0
-
     for p in image_root.rglob("*"):
         if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS:
             index.setdefault(p.name.lower().strip(), p)
@@ -146,78 +138,60 @@ def build_image_index(image_root):
 
 
 def find_matching_image(names, image_index):
-    path = None
-    match_type = None
-
-    # 1. Täpne vaste
     for n in names:
         n_clean = n.lower().strip()
         if n_clean in image_index:
             return image_index[n_clean], "exact"
 
-    # 2. Fallback: mf_00001.jpg -> mf_00001_n.jpg
     for n in names:
         stem = Path(n).stem.lower().strip()
-
         for indexed_name, indexed_path in image_index.items():
             indexed_stem = Path(indexed_name).stem.lower().strip()
-
             if indexed_stem.startswith(stem + "_"):
                 return indexed_path, "suffix_fallback"
 
-    return path, match_type
+    return None, None
 
 
 def choose_device():
     if FORCE_CPU:
         return torch.device("cpu")
-
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         return torch.device("mps")
-
     if torch.cuda.is_available():
         return torch.device("cuda")
-
     return torch.device("cpu")
 
 
 def get_cluster_columns(df):
     metadata = {
-        "PID",
-        "pid",
-        "failinimi",
-        "Failinimi",
-        "filename",
-        "file_name",
-        "Sisu kirjeldus",
-        "Kirjeldus",
-        "Aasta",
-        "Žanr",
-        "Kihelkond",
-        "Koht täpsemalt",
-        "Fotograaf",
-        "Fotograaf (puhastatud)",
-        "true_labels",
-        "labels",
-        "klastrid",
-        "Märksõna2",
-        "_has_manual_cluster",
+        "PID", "pid", "failinimi", "Failinimi", "filename", "file_name",
+        "Sisu kirjeldus", "Kirjeldus", "Aasta", "Žanr", "Kihelkond",
+        "Koht täpsemalt", "Fotograaf", "Fotograaf (puhastatud)",
+        "true_labels", "labels", "klastrid", "Märksõna2", "_has_manual_cluster",
     }
 
     cols = []
-
     for col in df.columns:
         if col in metadata:
             continue
-
         values = pd.to_numeric(df[col], errors="coerce").dropna()
-
         if len(values) and set(values.unique()).issubset({0, 1, 0.0, 1.0}):
             cols.append(col)
 
     return cols
 
 
+# ============================================================
+# 4. Valim: Exceliga seotud pildid + pildikaustast leitud lisapildid
+# ============================================================
+
+#
+# prepare_sample():
+# - märgib, millistel ridadel on käsitsi määratud klaster
+# - seob Exceli read päris pildifailidega
+# - lisab analüüsi ka need pildid, mida Exceliga siduda ei õnnestunud
+#
 def prepare_sample(df, cluster_cols, image_index):
     df = df.copy()
 
@@ -232,7 +206,6 @@ def prepare_sample(df, cluster_cols, image_index):
     missing_excel_rows = []
     used_image_paths = set()
 
-    # 1. Seome Exceli read piltidega
     for _, row in df.iterrows():
         names = possible_image_names(row)
         path, match_type = find_matching_image(names, image_index)
@@ -250,7 +223,6 @@ def prepare_sample(df, cluster_cols, image_index):
         else:
             missing_excel_rows.append(d)
 
-    # 2. Lisame kõik ülejäänud pildid, mida Exceliga siduda ei õnnestunud
     for indexed_name, indexed_path in image_index.items():
         if str(indexed_path) in used_image_paths:
             continue
@@ -290,26 +262,29 @@ def prepare_sample(df, cluster_cols, image_index):
         sample = found_df.reset_index(drop=True)
         print(f"Analüüsin kõiki pilte: {len(sample)}")
     else:
-        sample = found_df.sample(
-            n=min(N_IMAGES, len(found_df)),
-            random_state=RANDOM_SEED
-        ).reset_index(drop=True)
+        sample = found_df.sample(n=min(N_IMAGES, len(found_df)), random_state=RANDOM_SEED).reset_index(drop=True)
         print(f"Valisin katseks {len(sample)} pilti.")
 
     return sample, missing_df
 
 
+# ============================================================
+# 5. CLIP ennustamine
+# ============================================================
+#
+# Tekstipromptid teisendatakse CLIP mudeli embeddinguteks
+# ning iga pildi embeddingut võrreldakse nende kategooriatega.
+#
+# Tulemuseks saadakse iga pildi kõige tõenäolisemad kategooriad
+# koos skooride ja cosine similarity väärtustega.
+
+# ============================================================
+
 def make_text_prompts(cluster_cols):
     prompts = []
-
     for c in cluster_cols:
         c_clean = str(c).strip()
-        prompt = CLUSTER_PROMPTS.get(
-            c_clean,
-            f"{c_clean}, archive photograph subject"
-        )
-        prompts.append(prompt)
-
+        prompts.append(CLUSTER_PROMPTS.get(c_clean, f"{c_clean}, archive photograph subject"))
     return prompts
 
 
@@ -335,19 +310,10 @@ def extract_feature_tensor(output):
 @torch.no_grad()
 def compute_text_features(model, processor, cluster_cols, device):
     prompts = make_text_prompts(cluster_cols)
-
-    inputs = processor(
-        text=prompts,
-        return_tensors="pt",
-        padding=True,
-        truncation=True
-    )
-
+    inputs = processor(text=prompts, return_tensors="pt", padding=True, truncation=True)
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    raw = model.get_text_features(**inputs)
-    features = extract_feature_tensor(raw)
-
+    features = extract_feature_tensor(model.get_text_features(**inputs))
     features = features / features.norm(dim=-1, keepdim=True)
 
     return features, prompts
@@ -358,14 +324,19 @@ def compute_image_features(model, processor, image, device):
     inputs = processor(images=image, return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    raw = model.get_image_features(**inputs)
-    features = extract_feature_tensor(raw)
-
+    features = extract_feature_tensor(model.get_image_features(**inputs))
     features = features / features.norm(dim=-1, keepdim=True)
 
     return features
 
 
+#
+# predict_images():
+# - loeb iga pildi sisse
+# - arvutab CLIP embeddingu
+# - võrdleb seda tekstikategooriatega
+# - salvestab top5 ennustused ja nende skoorid
+#
 @torch.no_grad()
 def predict_images(model, processor, sample_df, cluster_cols, text_features, device):
     rows = []
@@ -384,15 +355,11 @@ def predict_images(model, processor, sample_df, cluster_cols, text_features, dev
             score_np = sigmoid_scores.detach().cpu().numpy()
 
             top_idx = np.argsort(score_np)[::-1][:TOP_K]
-
             pred = [cluster_cols[i] for i in top_idx]
             scores = [float(score_np[i]) for i in top_idx]
             cosine_top = [float(cosine_np[i]) for i in top_idx]
 
-            true = [
-                c for c in cluster_cols
-                if pd.to_numeric(row.get(c, 0), errors="coerce") == 1
-            ]
+            true = [c for c in cluster_cols if pd.to_numeric(row.get(c, 0), errors="coerce") == 1]
 
             top1_score = scores[0]
             top2_score = scores[1] if len(scores) > 1 else np.nan
@@ -406,27 +373,21 @@ def predict_images(model, processor, sample_df, cluster_cols, text_features, dev
                 "source": row.get("_source", ""),
                 "match_type": row.get("_match_type", ""),
                 "has_manual_cluster": bool(row.get("_has_manual_cluster", False)),
-
                 "true_clusters": "; ".join(true),
-
                 "pred_top1": pred[0] if len(pred) > 0 else "",
                 "pred_top2": pred[1] if len(pred) > 1 else "",
                 "pred_top3": pred[2] if len(pred) > 2 else "",
                 "pred_top4": pred[3] if len(pred) > 3 else "",
                 "pred_top5": pred[4] if len(pred) > 4 else "",
-
                 "pred_top1_score": scores[0] if len(scores) > 0 else np.nan,
                 "pred_top2_score": scores[1] if len(scores) > 1 else np.nan,
                 "pred_top3_score": scores[2] if len(scores) > 2 else np.nan,
                 "pred_top4_score": scores[3] if len(scores) > 3 else np.nan,
                 "pred_top5_score": scores[4] if len(scores) > 4 else np.nan,
-
                 "pred_top1_cosine": cosine_top[0] if len(cosine_top) > 0 else np.nan,
                 "pred_top2_cosine": cosine_top[1] if len(cosine_top) > 1 else np.nan,
                 "pred_top3_cosine": cosine_top[2] if len(cosine_top) > 2 else np.nan,
-
                 "confidence_margin_top1_top2": confidence_margin,
-
                 "hit_top1": int(pred[0] in true) if len(pred) > 0 and len(true) > 0 else np.nan,
                 "hit_any_top3": int(any(c in true for c in pred[:3])) if len(true) > 0 else np.nan,
                 "hit_any_top5": int(any(c in true for c in pred[:5])) if len(true) > 0 else np.nan,
@@ -447,21 +408,29 @@ def predict_images(model, processor, sample_df, cluster_cols, text_features, dev
                 "source": row.get("_source", ""),
                 "match_type": row.get("_match_type", ""),
                 "has_manual_cluster": bool(row.get("_has_manual_cluster", False)),
-                "error": str(e)
+                "error": str(e),
             })
 
     return pd.DataFrame(rows)
 
 
-def make_metrics(pred_df, sample_df, cluster_cols):
-    y_true = (
-        sample_df[cluster_cols]
-        .apply(pd.to_numeric, errors="coerce")
-        .fillna(0)
-        .astype(int)
-        .values
-    )
+# ============================================================
+# 6. Hindamine ainult käsitsi klastriga piltidel
+# ============================================================
+#
+# Täpsust hinnatakse ainult nende fotode põhjal,
+# millel oli olemas inimese poolt määratud kategooria.
+#
+# Arvutatakse:
+# - top1 täpsus
+# - kas õige kategooria leidub top3 seas
+# - kas õige kategooria leidub top5 seas
+# - precision / recall / F1 skoorid kategooriate kaupa
 
+# ============================================================
+
+def make_metrics(pred_df, sample_df, cluster_cols):
+    y_true = sample_df[cluster_cols].apply(pd.to_numeric, errors="coerce").fillna(0).astype(int).values
     idx = {c: i for i, c in enumerate(cluster_cols)}
 
     y_pred_top3 = np.zeros_like(y_true)
@@ -479,28 +448,19 @@ def make_metrics(pred_df, sample_df, cluster_cols):
                 y_pred_top5[r, idx[label]] = 1
 
     precision3, recall3, f13, support = precision_recall_fscore_support(
-        y_true,
-        y_pred_top3,
-        average=None,
-        zero_division=0
+        y_true, y_pred_top3, average=None, zero_division=0
     )
-
     precision5, recall5, f15, _ = precision_recall_fscore_support(
-        y_true,
-        y_pred_top5,
-        average=None,
-        zero_division=0
+        y_true, y_pred_top5, average=None, zero_division=0
     )
 
     metrics = pd.DataFrame({
         "cluster": cluster_cols,
         "support_true": support,
-
         "precision_top3": precision3,
         "recall_top3": recall3,
         "f1_top3": f13,
         "predicted_count_top3": y_pred_top3.sum(axis=0),
-
         "precision_top5": precision5,
         "recall_top5": recall5,
         "f1_top5": f15,
@@ -516,7 +476,7 @@ def make_metrics(pred_df, sample_df, cluster_cols):
         "max_top1_score": pred_df["pred_top1_score"].max(),
         "min_top1_score": pred_df["pred_top1_score"].min(),
         "mean_confidence_margin": pred_df["confidence_margin_top1_top2"].mean(),
-        "note": "Täpsus arvutatud ainult nende piltide põhjal, millel on käsitsi klaster olemas. Kõik pildid said siiski CLIP-i ennustuse."
+        "note": "Täpsus arvutatud ainult nende piltide põhjal, millel on käsitsi klaster olemas. Kõik pildid said siiski CLIP-i ennustuse.",
     }])
 
     return metrics, overall
@@ -524,12 +484,10 @@ def make_metrics(pred_df, sample_df, cluster_cols):
 
 def make_threshold_summary(pred_df):
     thresholds = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
-
     rows = []
 
     for t in thresholds:
         subset = pred_df[pred_df["pred_top1_score"] >= t]
-
         rows.append({
             "threshold_top1_score": t,
             "n_images_above_threshold": len(subset),
@@ -541,6 +499,20 @@ def make_threshold_summary(pred_df):
 
     return pd.DataFrame(rows)
 
+
+# ============================================================
+# 7. Põhiprotsess: laadimine, ennustamine, hindamine ja salvestamine
+# ============================================================
+#
+# Töövoog:
+# 1. Loetakse Excel ja leitakse kategooriaveerud
+# 2. Seotakse read pildifailidega
+# 3. Laetakse CLIP mudel
+# 4. Ennustatakse igale pildile kategooriad
+# 5. Hinnatakse tulemusi käsitsi märgendatud piltidel
+# 6. Salvestatakse kõik tulemused Excelisse
+#
+# ============================================================
 
 def main():
     random.seed(RANDOM_SEED)
@@ -557,7 +529,6 @@ def main():
     print(cluster_cols)
 
     image_index = build_image_index(IMAGE_ROOT)
-
     sample_df, missing_df = prepare_sample(df, cluster_cols, image_index)
 
     device = choose_device()
@@ -568,30 +539,12 @@ def main():
     model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
     model.eval()
 
-    text_features, prompts = compute_text_features(
-        model,
-        processor,
-        cluster_cols,
-        device
-    )
+    text_features, prompts = compute_text_features(model, processor, cluster_cols, device)
+    prompt_df = pd.DataFrame({"cluster": cluster_cols, "prompt": prompts})
 
-    prompt_df = pd.DataFrame({
-        "cluster": cluster_cols,
-        "prompt": prompts
-    })
+    pred_df = predict_images(model, processor, sample_df, cluster_cols, text_features, device)
 
-    pred_df = predict_images(
-        model,
-        processor,
-        sample_df,
-        cluster_cols,
-        text_features,
-        device
-    )
-
-    # Hindame ainult neid ridu, millel oli käsitsi klaster olemas
     eval_mask = sample_df["_has_manual_cluster"] == True
-
     sample_eval = sample_df[eval_mask].reset_index(drop=True)
     pred_eval = pred_df[eval_mask].reset_index(drop=True)
 
