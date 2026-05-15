@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import ssl
 import json
 from collections import Counter
@@ -67,7 +68,37 @@ master.columns = master.columns.str.strip()
 df["PID"] = df["PID"].astype(str).str.strip()
 master["PID"] = master["PID"].astype(str).str.strip()
 
-master_small = master[["PID", "Aasta"]].drop_duplicates(subset=["PID"])
+master_small = master[
+    [
+        "PID",
+        "Aasta",
+        "Fotograaf (puhastatud)",
+        "Žanr",
+        "failinimi"
+    ]
+].drop_duplicates(subset=["PID"])
+
+master_small = master_small.rename(
+    columns={
+        "Fotograaf (puhastatud)": "Fotograaf"
+    }
+)
+
+df = df.drop(
+    columns=[
+        "Aasta",
+        "Fotograaf",
+        "Žanr",
+        "failinimi"
+    ],
+    errors="ignore"
+)
+
+df = df.merge(
+    master_small,
+    on="PID",
+    how="left"
+)
 
 df = df.drop(columns=["Aasta"], errors="ignore")
 
@@ -81,6 +112,13 @@ df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
 df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
 
 df["koordinaadid_leitud"] = df["Latitude"].notna() & df["Longitude"].notna()
+
+df["kaardi_piirkond"] = (
+    df["Kihelkond"]
+    .astype(str)
+    .str.strip()
+)
+
 
 with tab1:
 
@@ -700,96 +738,799 @@ with tab1:
         use_container_width=True,
         config={"displayModeBar": False}
     )
+# GEOJSONI LAADIMINE
+@st.cache_data
+def load_geojson(path):
+
+    with open(path, "r", encoding="utf-8") as f:
+
+        return json.load(f)
+
 
 # GEOJSON - KIHELKONNA PIIRID
-with open("data/areas.geojson", "r", encoding="utf-8") as f:
-    geojson_data = json.load(f)
+geojson_data = load_geojson(
+    "kih1922_region.json"
+)
 
-with tab2:
-    # UUS KAART
-    st.header("Fotode kaart")
-    st.caption(
-        "Kaart näitab fotode geograafilist jaotust Eesti ajalooliste kihelkondade lõikes."
-    )
 
-    df_map = df.copy()
+# GEOJSONI KIHELKONDADE NIMEDE LUGEMINE
+def extract_geojson_feature_names(
+    geojson,
+    prop_name="KIHELKOND"
+):
 
-    df_map = df_map.dropna(subset=["Latitude", "Longitude"])
+    names = set()
 
-    # KAART - KIHELKOND FILTER
-    if selected:
-        df_map = df_map[df_map["Kihelkond"].isin(selected)]
+    if not geojson or "features" not in geojson:
+        return names
 
-    # KAART - ASUKOHT FILTER
-    if selected_places:
-        df_map = df_map[df_map["Koht täpsemalt"].isin(selected_places)]
+    for feature in geojson["features"]:
 
-    # KAART - ANDMED JA KUJUTUS
-    map_counts = (
-        df_map.groupby(["Latitude", "Longitude", "Kihelkond", "Koht täpsemalt"])
-        .size()
-        .reset_index(name="count")
-    )
-    # KIHELKONDADE KOKKUVÕTE POLÜGOONIDE JAOKS
-    polygon_counts = df_map.groupby("Kihelkond").size().reset_index(name="Fotode arv")
+        props = feature.get("properties", {})
 
-    fig_map = px.choropleth_mapbox(
-        polygon_counts,
-        geojson=geojson_data,
-        locations="Kihelkond",
-        featureidkey="properties.KIHELKOND",
-        color="Fotode arv",
-        color_continuous_scale="Viridis",
-        mapbox_style="carto-positron",
-        zoom=6.4,
-        center={"lat": 58.7, "lon": 25.0},
-        opacity=0.5,
-        height=650,
-        hover_name="Kihelkond",
-        hover_data={"Fotode arv": True},
-    )
+        val = props.get(prop_name)
 
-    fig_points = px.scatter_mapbox(
-        map_counts,
-        lat="Latitude",
-        lon="Longitude",
-        size="count",
-        hover_name="Kihelkond",
-        hover_data={
-            "Koht täpsemalt": True,
-            "count": False,
-            "Latitude": False,
-            "Longitude": False,
-        },
-        custom_data=["Koht täpsemalt", "count"],
-        size_max=20,
-        color_discrete_sequence=["#EDF85B"],
-    )
+        if val is not None and str(val).strip():
 
-    for trace in fig_points.data:
-        trace.hovertemplate = (
-            "<b>%{hovertext}</b><br>"
-            "Asukoht: %{customdata[0]}<br>"
-            "Fotode arv: %{customdata[1]}<extra></extra>"
+            names.add(
+                str(val).strip()
+            )
+
+    return names
+
+@st.cache_data
+def get_centroids(_gj):
+
+    result = {}
+
+    if not _gj:
+        return result
+
+    for feat in _gj.get("features", []):
+
+        name = feat.get(
+            "properties",
+            {}
+        ).get("KIHELKOND", "")
+
+        geom = feat.get("geometry", {})
+
+        coords = []
+
+        if geom.get("type") == "Polygon":
+
+            coords = geom.get(
+                "coordinates",
+                [[]]
+            )[0]
+
+        elif geom.get("type") == "MultiPolygon":
+
+            for poly in geom.get("coordinates", []):
+
+                if poly and poly[0]:
+
+                    coords.extend(poly[0])
+
+        if coords and name:
+
+            lons = [
+                c[0]
+                for c in coords
+                if len(c) >= 2
+            ]
+
+            lats = [
+                c[1]
+                for c in coords
+                if len(c) >= 2
+            ]
+
+            if lons and lats:
+
+                result[name] = (
+                    sum(lats) / len(lats),
+                    sum(lons) / len(lons)
+                )
+
+    return result
+
+def poly_rings(geom):
+
+    if not geom or "type" not in geom:
+        return []
+
+    rings = []
+
+    try:
+
+        if (
+            geom["type"] == "Polygon"
+            and geom["coordinates"]
+            and geom["coordinates"][0]
+        ):
+
+            rings.append(
+                geom["coordinates"][0]
+            )
+
+        elif geom["type"] == "MultiPolygon":
+
+            for poly in geom["coordinates"]:
+
+                if poly and poly[0]:
+
+                    rings.append(poly[0])
+
+    except Exception:
+
+        pass
+
+    return rings
+
+
+def add_borders(
+    fig,
+    geojson,
+    color="black",
+    width=1
+):
+
+    if not geojson or "features" not in geojson:
+
+        return fig
+
+    for feat in geojson["features"]:
+
+        for coords in poly_rings(
+            feat.get("geometry", {})
+        ):
+
+            if not coords or len(coords) < 2:
+
+                continue
+
+            try:
+
+                lons = [
+                    c[0]
+                    for c in coords
+                    if len(c) >= 2
+                ]
+
+                lats = [
+                    c[1]
+                    for c in coords
+                    if len(c) >= 2
+                ]
+
+                fig.add_trace(
+                    go.Scattermapbox(
+                        lon=lons,
+                        lat=lats,
+
+                        mode="lines",
+
+                        line=dict(
+                            color=color,
+                            width=width
+                        ),
+
+                        hoverinfo="skip",
+
+                        showlegend=False
+                    )
+                )
+
+            except Exception:
+
+                continue
+
+    return fig
+
+def build_hover(row, cols):
+
+    parts = []
+
+    for c in cols:
+
+        if c in row and pd.notna(row[c]):
+
+            val = str(row[c]).strip()
+
+            if val:
+
+                parts.append(
+                    f"<b>{c}:</b> {val}"
+                )
+
+    if parts:
+
+        return "<br>".join(parts)
+
+    return "—"
+
+def clean_series(series):
+
+    if series is None:
+
+        return pd.Series(
+            dtype="object"
         )
 
-        fig_map.add_trace(trace)
-
-    fig_map.update_traces(
-        marker=dict(opacity=0.55), selector=dict(type="scattermapbox")
+    s = (
+        series
+        .dropna()
+        .astype(str)
+        .str.strip()
     )
 
-    fig_map.update_layout(
-        mapbox_style="carto-positron",
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        coloraxis_colorbar=dict(title="", thickness=12, len=0.5),
+    return s[
+        s != ""
+    ]
+
+def clean_df(df_in):
+
+    out = df_in.copy()
+
+    for col in out.select_dtypes(
+        include="object"
+    ).columns:
+
+        out[col] = (
+            out[col]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+    return out
+
+#KAART
+with tab2:
+
+    st.markdown(
+        "Kaart visualiseerib fotokogu ruumilisi mustreid ajalooliste kihelkondade lõikes."
     )
 
-    st.plotly_chart(fig_map, use_container_width=True)
+    geojson = load_geojson("kih1922_region.json")
 
-    # KAART - KAARDISTATUD INFO TÄPSUSTUS
-    st.caption(f"Tabelis fotosid (kokku): {len(df)}")
-    st.caption(f"Kaardil fotosid (koordinaatidega): {len(df_map)}")
+    centroids = get_centroids(geojson) if geojson else {}
+
+    geo_names = {
+        str(x).strip()
+        for x in centroids.keys()
+    }
+
+    # SESSION STATE
+    if "kaart_vaade" not in st.session_state:
+        st.session_state["kaart_vaade"] = "overview"
+
+    if "valitud_kihelkond" not in st.session_state:
+        st.session_state["valitud_kihelkond"] = None
+
+    # OVERVIEW
+    if st.session_state["kaart_vaade"] == "overview":
+
+        if not geojson:
+
+            st.warning("GeoJSON faili ei leitud.")
+
+        elif "kaardi_piirkond" not in df.columns:
+
+            st.warning("Veerg 'kaardi_piirkond' puudub.")
+
+        else:
+
+            # FILTREERITUD ANDMED
+            src = df[
+                df["kaardi_piirkond"].notna()
+            ].copy()
+
+            src = src[
+                ~src["kaardi_piirkond"]
+                .astype(str)
+                .str.lower()
+                .isin([
+                    "teadmata",
+                    "välismaa",
+                    "välismaa,",
+                    "nan",
+                    "none",
+                    "null",
+                    "<na>"
+                ])
+            ]
+
+            # NORMALISEERI NIMED
+            src["kaardi_piirkond"] = (
+                src["kaardi_piirkond"]
+                .astype(str)
+                .str.strip()
+            )
+
+            # FOTODE ARV PIIRKONNA KOHTA
+            counts = (
+                src
+                .groupby("kaardi_piirkond")
+                .size()
+                .reset_index(name="Fotode arv")
+            )
+
+            # AINULT GEOJSONIS OLEVAD
+            geo_c = counts[
+                counts["kaardi_piirkond"]
+                .isin(geo_names)
+            ].copy()
+
+            # DEBUG
+            # st.write(geo_c.head())
+            # st.write(len(geo_c))
+
+            if geo_c.empty:
+
+                st.warning(
+                    "GeoJSON ja dataframe piirkonnanimed ei kattu."
+                )
+
+            else:
+
+                # KAART
+                fig = px.choropleth_mapbox(
+
+                    geo_c,
+
+                    geojson=geojson,
+
+                    locations="kaardi_piirkond",
+
+                    featureidkey="properties.KIHELKOND",
+
+                    color="Fotode arv",
+
+                    color_continuous_scale=[
+                        "#d780f2",
+                        "#9350B2",
+                        "#8d3c9f",
+                        "#773c9c",
+                        "#561d8c"
+                    ],
+
+                    hover_name="kaardi_piirkond",
+
+                    hover_data={
+                        "Fotode arv": True
+                    },
+
+                    custom_data=[
+                        "kaardi_piirkond"
+                    ],
+
+                    mapbox_style="open-street-map",
+
+                    zoom=6.2,
+
+                    center={
+                        "lat": 58.7,
+                        "lon": 25.0
+                    },
+
+                    opacity=0.68
+                )
+
+                # PIIRID
+                fig = add_borders(
+                    fig,
+                    geojson,
+                    color="rgba(40,40,40,0.55)",
+                    width=0.8
+                )
+
+                fig.update_layout(
+
+                    height=700,
+
+                    margin={
+                        "r": 0,
+                        "t": 10,
+                        "l": 0,
+                        "b": 0
+                    },
+
+                    clickmode="event+select",
+
+                    coloraxis_colorbar=dict(
+                        title="Fotode arv"
+                    )
+                )
+
+                # STREAMLIT SELECT API
+                event = st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    key="main_kaart",
+                    on_select="rerun",
+                    selection_mode="points"
+                )
+
+                # KLIKITUD PIIRKOND
+                try:
+
+                    points = (
+                        event.get("selection", {})
+                        .get("points", [])
+                    )
+
+                    if points:
+
+                        p = points[0]
+
+                        selected = (
+                            (p.get("customdata") or [None])[0]
+                            or p.get("location")
+                        )
+
+                        if selected:
+
+                            st.session_state[
+                                "valitud_kihelkond"
+                            ] = str(selected)
+
+                            st.session_state[
+                                "kaart_vaade"
+                            ] = "detail"
+
+                            st.rerun()
+
+                except Exception:
+                    pass
+
+    # ═════════ DETAIL VIEW ═════════
+    else:
+
+        val = st.session_state["valitud_kihelkond"]
+
+        if not val:
+
+            st.session_state["kaart_vaade"] = "overview"
+
+            st.rerun()
+
+        # TAGASI NUPP
+        if st.button("← Tagasi üldkaardile"):
+
+            st.session_state["kaart_vaade"] = "overview"
+
+            st.session_state["valitud_kihelkond"] = None
+
+            st.rerun()
+
+        st.subheader(f"📍 {val}")
+
+        # FILTER
+        det = df[
+            df["kaardi_piirkond"]
+            .astype(str)
+            .str.strip()
+            == val
+        ].copy()
+
+        ok = (
+            det["Latitude"].notna()
+            &
+            det["Longitude"].notna()
+        )
+
+        # KPI
+        k1, k2, k3, k4 = st.columns(4)
+
+        k1.metric(
+            "Fotosid",
+            len(det)
+        )
+
+        k2.metric(
+            "Koordinaatidega",
+            int(ok.sum())
+        )
+
+        k3.metric(
+            "Ajavahemik",
+
+            (
+                f"{int(det['Aasta'].min())}"
+                f"–"
+                f"{int(det['Aasta'].max())}"
+            )
+
+            if (
+                "Aasta" in det.columns
+                and det["Aasta"].notna().any()
+            )
+
+            else "?"
+        )
+
+        k4.metric(
+            "Fotograafe",
+
+            clean_series(
+                det["Fotograaf"]
+            ).nunique()
+
+            if "Fotograaf" in det.columns
+            else "?"
+        )
+
+        # KOORDINAATIDEGA FOTOD
+        pts = det[ok].copy()
+
+        pts = pts.rename(
+            columns={
+                "Latitude": "_lat",
+                "Longitude": "_lon"
+            }
+        )
+
+        if not pts.empty:
+
+            center = centroids.get(
+                val,
+                (
+                    pts["_lat"].median(),
+                    pts["_lon"].median()
+                )
+            )
+
+            # HOVER
+            hover_cols = [
+                c for c in [
+                    "Aasta",
+                    "Fotograaf",
+                    "Žanr",
+                    "Koht täpsemalt"
+                ]
+
+                if c in pts.columns
+            ]
+
+            pts["_hover"] = pts.apply(
+                lambda r: build_hover(r, hover_cols),
+                axis=1
+            )
+
+            title_col = (
+                "Sisu kirjeldus"
+                if "Sisu kirjeldus" in pts.columns
+                else None
+            )
+
+            # DETAILKAART
+            fig_d = go.Figure(
+
+                go.Scattermapbox(
+
+                    lat=pts["_lat"],
+
+                    lon=pts["_lon"],
+
+                    mode="markers",
+
+                    marker=dict(
+                        size=10,
+                        opacity=0.85,
+                        color="#e63946"
+                    ),
+
+                    customdata=(
+                        pts[[title_col]].fillna("")
+                        if title_col
+                        else None
+                    ),
+
+                    text=pts["_hover"],
+
+                    hovertemplate=(
+
+                        "<b>%{customdata[0]}</b><br>"
+                        "%{text}<extra></extra>"
+
+                        if title_col
+
+                        else "%{text}<extra></extra>"
+                    )
+                )
+            )
+
+            # PIIR
+            kihel_feat = [
+
+                f for f in geojson["features"]
+
+                if (
+                    f.get("properties", {})
+                    .get("KIHELKOND")
+                    == val
+                )
+            ]
+
+            if kihel_feat:
+
+                for ring in poly_rings(
+
+                    kihel_feat[0]
+                    .get("geometry", {})
+                ):
+
+                    lons = [
+                        c[0]
+                        for c in ring
+                        if len(c) >= 2
+                    ]
+
+                    lats = [
+                        c[1]
+                        for c in ring
+                        if len(c) >= 2
+                    ]
+
+                    fig_d.add_trace(
+
+                        go.Scattermapbox(
+
+                            lon=lons,
+
+                            lat=lats,
+
+                            mode="lines",
+
+                            line=dict(
+                                color="rgba(20,20,20,0.9)",
+                                width=2
+                            ),
+
+                            hoverinfo="skip",
+
+                            showlegend=False
+                        )
+                    )
+
+            fig_d.update_layout(
+
+                mapbox=dict(
+
+                    style="open-street-map",
+
+                    zoom=10,
+
+                    center={
+                        "lat": center[0],
+                        "lon": center[1]
+                    }
+                ),
+
+                height=500,
+
+                margin={
+                    "r": 0,
+                    "t": 10,
+                    "l": 0,
+                    "b": 0
+                },
+
+                showlegend=False
+            )
+
+            st.plotly_chart(
+                fig_d,
+                use_container_width=True
+            )
+
+        else:
+
+            st.info(
+                "Sellel piirkonnal koordinaatidega fotosid ei ole."
+            )
+
+        # TABLID
+        col1, col2 = st.columns(2)
+
+        # FOTOGRAAFID
+        with col1:
+
+            if "Fotograaf" in det.columns:
+
+                ft = (
+                    clean_series(det["Fotograaf"])
+                    .value_counts()
+                    .head(8)
+                    .reset_index()
+                )
+
+                ft.columns = [
+                    "Fotograaf",
+                    "Arv"
+                ]
+
+                if not ft.empty:
+
+                    st.markdown("### Fotograafid")
+
+                    st.dataframe(
+                        ft,
+                        hide_index=True,
+                        use_container_width=True
+                    )
+
+        # MÄRKSÕNAD
+        with col2:
+
+            if (
+                not marksoned.empty
+                and "Märksõna" in marksoned.columns
+            ):
+
+                ms_d = (
+
+                    clean_series(
+
+                        marksoned[
+                            marksoned["PID"]
+                            .isin(det["PID"])
+                        ]["Märksõna"]
+
+                    )
+
+                    .value_counts()
+
+                    .head(8)
+
+                    .reset_index()
+                )
+
+                ms_d.columns = [
+                    "Märksõna",
+                    "Arv"
+                ]
+
+                if not ms_d.empty:
+
+                    st.markdown("### Top märksõnad")
+
+                    st.dataframe(
+                        ms_d,
+                        hide_index=True,
+                        use_container_width=True
+                    )
+
+        # TABEL
+        with st.expander(
+            "Vaata kõiki fotosid sellest piirkonnast"
+        ):
+
+            d_cols = [
+
+                c for c in [
+
+                    "PID",
+                    "Aasta",
+                    "Fotograaf",
+                    "Žanr",
+                    "Sisu kirjeldus",
+                    "Koht täpsemalt",
+                    "failinimi"
+
+                ]
+
+                if c in det.columns
+            ]
+
+            st.dataframe(
+                clean_df(det[d_cols]).head(500),
+                use_container_width=True,
+                hide_index=True
+            )
+
 
 with tab3:
     # MÄRKSÕNAD
@@ -1409,6 +2150,8 @@ with tab4:
 
         network_df["Fotograaf"] = network_df["Fotograaf"].astype(str).str.strip()
 
+
+
         G = nx.Graph()
 
         # ISIK-ISIK VÕRGUSTIK
@@ -1761,30 +2504,62 @@ with tab5:
         "Alla laaditakse hetkel filtrite ja otsinguga kuvatud andmestik."
     )
 
-    # ANDMETE KVALITEET
+  # ANDMETE KVALITEET
     st.markdown("---")
+
     st.subheader("Andmete kvaliteet")
 
     total = len(df)
-    with_coords = len(df_map)
+
+    with_coords = len(
+        df[
+            df["Latitude"].notna()
+            &
+            df["Longitude"].notna()
+        ]
+    )
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Kõik fotod", f"{total:,}")
-    col2.metric("Koordinaatidega fotod", f"{with_coords:,}")
-    col3.metric("Puuduvad koordinaadid", f"{total - with_coords:,}")
+    col1.metric(
+        "Kõik fotod",
+        f"{total:,}"
+    )
 
-    percent = round((with_coords / total) * 100, 1)
+    col2.metric(
+        "Koordinaatidega fotod",
+        f"{with_coords:,}"
+    )
 
-    st.markdown(f"Kaardil kuvatakse **{percent}%** kõikidest fotodest.")
+    col3.metric(
+        "Puuduvad koordinaadid",
+        f"{total - with_coords:,}"
+    )
+
+    percent = round(
+        (with_coords / total) * 100,
+        1
+    ) if total > 0 else 0
+
+    st.markdown(
+        f"Kaardil kuvatakse **{percent}%** kõikidest fotodest."
+    )
 
     if percent < 50:
-        st.warning("Suur osa andmetest ei sisalda koordinaate.")
+
+        st.warning(
+            "Suur osa andmetest ei sisalda koordinaate."
+        )
+
     else:
-        st.success("Andmestik sobib hästi kaardipõhiseks analüüsiks.")
+
+        st.success(
+            "Andmestik sobib hästi kaardipõhiseks analüüsiks."
+        )
 
     st.caption(
-        "Koordinaatide olemasolu võimaldab kasutada ruumilist ja kaardipõhist analüüsi."
+        "Koordinaatide olemasolu võimaldab kasutada "
+        "ruumilist ja kaardipõhist analüüsi."
     )
 
     # TOP FOTOGRAAFID
