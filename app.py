@@ -2490,10 +2490,19 @@ with tab5:
             ml_raw["PID"]
             .astype(str)
             .str.strip()
-            .str.lower()
-            .ne("nan")
-            .sum()
         )
+
+        clip_pid = clip_pid[
+            ~clip_pid.isin([
+                "",
+                "nan",
+                "None",
+                "none",
+                "NULL",
+                "null",
+                "<NA>"
+            ])
+        ].count()
 
         image_only = clip_total - clip_pid
 
@@ -2531,9 +2540,13 @@ with tab5:
 
             graph_df = ml_raw.copy()
 
+            manual_col = "Märksõna kategooria"
+
         else:
 
             graph_df = ml_df.copy()
+
+            manual_col = "Märksõna kategooria"
 
         # TOP KATEGOORIAD
         col1, col2 = st.columns(2)
@@ -2542,10 +2555,10 @@ with tab5:
         with col1:
 
             st.subheader("Olemasolevad kategooriad")
-
-            existing = split_cats(
-                graph_df["Märksõna kategooria"]
-            ).value_counts().head(20)
+            if manual_col in graph_df.columns:
+                existing = split_cats(
+                    graph_df[manual_col]
+                ).value_counts().head(20)
 
             if not existing.empty:
 
@@ -2641,11 +2654,17 @@ with tab5:
         # KATTUVUS
         st.subheader("ML ja olemasolevate kategooriate kattuvus")
 
-        eval_df = ml_df[
-            ml_df["pred_top1"].notna()
-            &
-            ml_df["Märksõna kategooria"].notna()
-        ].copy()
+        if manual_col in graph_df.columns:
+
+            eval_df = graph_df[
+                graph_df["pred_top1"].notna()
+                &
+                graph_df[manual_col].notna()
+            ].copy()
+
+        else:
+
+            eval_df = pd.DataFrame()
 
         if not eval_df.empty:
 
@@ -2653,7 +2672,7 @@ with tab5:
 
                 lambda r: cat_match(
                     r,
-                    "Märksõna kategooria",
+                    manual_col,
                     ["pred_top1"]
                 ),
 
@@ -2664,7 +2683,7 @@ with tab5:
 
                 lambda r: cat_match(
                     r,
-                    "Märksõna kategooria",
+                    manual_col,
                     [
                         "pred_top1",
                         "pred_top2",
@@ -2679,7 +2698,7 @@ with tab5:
 
                 lambda r: cat_match(
                     r,
-                    "Märksõna kategooria",
+                    manual_col,
                     [
                         "pred_top1",
                         "pred_top2",
@@ -2717,7 +2736,7 @@ with tab5:
         heat = eval_df.copy()
 
         heat["manual"] = (
-            heat["Märksõna kategooria"]
+            heat[manual_col]
             .astype(str)
             .str.replace(";", ",", regex=False)
             .str.replace("|", ",", regex=False)
@@ -2784,7 +2803,7 @@ with tab5:
             "🔍 Otsi ML tabelist"
         )
 
-        show_ml = ml_df.copy()
+        show_ml = graph_df.copy()
 
         if search_ml:
 
@@ -2823,7 +2842,7 @@ with tab5:
                 ~show_ml.apply(
                     lambda r: cat_match(
                         r,
-                        "Märksõna kategooria",
+                        manual_col,
                         [
                             "pred_top1",
                             "pred_top2",
