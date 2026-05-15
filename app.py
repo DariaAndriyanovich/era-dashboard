@@ -503,20 +503,9 @@ with tab1:
     st.markdown("### Kihelkonnad ajas")
     st.caption("Graafik näitab erinevate kihelkondade fotode arvu muutumist ajas.")
 
-    all_kih = sorted(
-    df["Kihelkond"]
-    .dropna()
-    .astype(str)
-    .unique()
-    )
+    all_kih = sorted(df["Kihelkond"].dropna().astype(str).unique())
 
-    top_kih = (
-        df["Kihelkond"]
-        .value_counts()
-        .head(5)
-        .index
-        .tolist()
-    )
+    top_kih = df["Kihelkond"].value_counts().head(5).index.tolist()
 
     selected_kih = st.multiselect(
         "Vali max 5 kihelkonda",
@@ -580,7 +569,7 @@ with tab1:
     fig_places.update_layout(
         paper_bgcolor="white",
         plot_bgcolor="white",
-        height=500,
+        height=350,
         margin=dict(l=20, r=20, t=30, b=20),
         font=dict(size=14),
         coloraxis_showscale=False,
@@ -592,29 +581,46 @@ with tab1:
     )
 
     st.plotly_chart(fig_places, use_container_width=True)
-    # Pie chart piirkondade / kihelkondade jaotuse visualiseerimiseks
+
+    # Piirkondade jaotus
+
     st.markdown("---")
     st.subheader("Fotode jaotus piirkondade järgi")
 
-    piirkonnad = df["Kihelkond"].dropna().value_counts().head(8).reset_index()
+    piirkonnad = (
+        df["Kihelkond"]
+        .dropna()
+        .value_counts()
+        .head(8)
+        .reset_index()
+    )
 
     piirkonnad.columns = ["Kihelkond", "Fotode arv"]
 
-    fig_pie = px.pie(
-        piirkonnad,
-        names="Kihelkond",
-        values="Fotode arv",
-        hole=0.45,
-        color_discrete_sequence=px.colors.sequential.Tealgrn,
+    fig_region = px.bar(
+        piirkonnad.sort_values("Fotode arv"),
+        x="Fotode arv",
+        y="Kihelkond",
+        orientation="h",
+        color="Fotode arv",
+        color_continuous_scale="Mint",
     )
 
-    fig_pie.update_layout(
-        paper_bgcolor="white", plot_bgcolor="white", height=500, showlegend=True
+    fig_region.update_layout(
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        height=350,
+        margin=dict(l=20, r=20, t=20, b=20),
+        showlegend=False,
+        coloraxis_showscale=False,
+        yaxis_title="",
     )
 
-    st.plotly_chart(fig_pie, use_container_width=True)
+    fig_region.update_traces(
+        hovertemplate="<b>%{y}</b><br>Fotode arv: %{x}<extra></extra>"
+    )
 
-    st.caption("Diagramm näitab, millistes kihelkondades on kõige rohkem fotosid.")
+    st.plotly_chart(fig_region, use_container_width=True)
 
 
 # GEOJSON - KIHELKONNA PIIRID
@@ -1318,80 +1324,82 @@ with tab4:
                 height="900px", width="100%", bgcolor="#ffffff", font_color="black"
             )
 
-        # SÕLMED
-        for node in G.nodes():
+            # SÕLMED
+            for node in G.nodes():
 
-            group = G.nodes[node].get("group")
+                group = G.nodes[node].get("group")
 
-            if group == "fotograaf":
+                if group == "fotograaf":
 
-                net.add_node(node, label=node, color="#199890", size=10)
+                    net.add_node(node, label=node, color="#199890", size=10)
 
-            else:
+                else:
 
-                net.add_node(node, label=node, color="#90d287", size=6)
+                    net.add_node(node, label=node, color="#90d287", size=6)
 
-        # SERVAD
+            # SERVAD
 
-        for source, target, data in G.edges(data=True):
+            for source, target, data in G.edges(data=True):
 
-            if source in net.get_nodes() and target in net.get_nodes():
+                if source in net.get_nodes() and target in net.get_nodes():
 
-                net.add_edge(
-                    source,
-                    target,
-                    value=data["weight"],
-                    color={"color": "rgba(120,120,120,0.25)", "highlight": "#ff4d4d"},
-                )
+                    net.add_edge(
+                        source,
+                        target,
+                        value=data["weight"],
+                        color={
+                            "color": "rgba(120,120,120,0.25)",
+                            "highlight": "#ff4d4d",
+                        },
+                    )
 
-        # OPTIONS
+            # OPTIONS
 
-        net.set_options("""
-        {
-        "layout": {
-            "improvedLayout": true
-        },
+            net.set_options("""
+            {
+              "layout": {
+                "improvedLayout": true
+              },
 
-        "nodes": {
-            "font": {
-            "size": 6
+              "nodes": {
+                "font": {
+                "size": 6
+                }
+              },
+
+              "edges": {
+                "smooth": false
+              },
+
+              "physics": {
+                "enabled": true,
+                "stabilization": {
+                  "enabled": true,
+                  "iterations": 150
+                  },
+
+                "barnesHut": {
+                  "gravitationalConstant": -5000,
+                  "centralGravity": 0.25,
+                  "springLength": 70,
+                  "springConstant": 0.04,
+                  "damping": 0.8
+                }
+              },
+
+              "interaction": {
+                  "hover": true,
+                  "navigationButtons": true,
+                  "keyboard": true,
+                  "hoverConnectedEdges": true,
+                  "selectConnectedEdges": true
+              }
             }
-        },
+            """)
 
-        "edges": {
-            "smooth": false
-        },
+            html = net.generate_html()
 
-        "physics": {
-            "enabled": true,
-
-            "stabilization": {
-            "enabled": true,
-            "iterations": 150
-            },
-
-            "barnesHut": {
-            "gravitationalConstant": -5000,
-            "centralGravity": 0.25,
-            "springLength": 70,
-            "springConstant": 0.04,
-            "damping": 0.8
-            }
-        },
-
-        "interaction": {
-            "hover": true,
-            "navigationButtons": true,
-            "keyboard": true,
-            "hoverConnectedEdges": true,
-            "selectConnectedEdges": true
-        }
-        }
-        """)
-
-        html = net.generate_html()
-
-        components.html(html, height=950)
+            components.html(html, height=950)
 
 
 with tab5:
