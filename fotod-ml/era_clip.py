@@ -1,7 +1,9 @@
+# ============================================================
 # Käesolevas analüüsis kasutati OpenAI CLIP (Contrastive Language–Image Pretraining) mudelit, et võrrelda arhiivifotosid eeldefineeritud temaatiliste kategooriatega. 
 # CLIP võimaldab siduda pilte ja tekstilisi kirjeldusi samasse tähendusruumi, hinnates kui hästi konkreetne pilt vastab etteantud kategooria kirjeldusele.
 # Mudeli abil ennustati igale fotole kõige tõenäolisemad märksõnakategooriad ning võrreldi tulemusi olemasolevate käsitsi loodud märgendustega. 
 # Lisaks salvestati iga ennustuse tõenäosusskoorid ja hinnati, kui sageli leidus õige kategooria mudeli top1, top3 või top5 tulemuste seas.
+# ============================================================
 
 from pathlib import Path
 import re
