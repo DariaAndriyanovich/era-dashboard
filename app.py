@@ -598,46 +598,91 @@ with tab1:
 
     st.plotly_chart(fig_places, use_container_width=True)
 
-    # Piirkondade jaotus
-
+    # FOTODE JAOTUS PIIRKONDADE JÄRGI
     st.markdown("---")
     st.subheader("Fotode jaotus piirkondade järgi")
 
-    piirkonnad = (
+    st.caption(
+        "Diagramm näitab, millistes kihelkondades leidub kõige rohkem fotosid."
+    )
+
+    region_counts = (
         df["Kihelkond"]
-        .dropna()
         .value_counts()
         .head(10)
         .reset_index()
     )
 
-    piirkonnad.columns = ["Kihelkond", "Fotode arv"]
+    region_counts.columns = [
+        "Kihelkond",
+        "Fotode arv"
+    ]
 
-    fig_region = px.bar(
-        piirkonnad.sort_values("Fotode arv"),
+    region_counts = region_counts.sort_values(
+        by="Fotode arv",
+        ascending=True
+    )
+
+    fig_regions = px.bar(
+        region_counts,
         x="Fotode arv",
         y="Kihelkond",
         orientation="h",
+        text="Fotode arv",
         color="Fotode arv",
-        color_continuous_scale="Mint",
+        color_continuous_scale=[
+            "#D7EFE2",
+            "#9AD7C3",
+            "#52B69A",
+            "#1B6F78"
+        ],
     )
 
-    fig_region.update_layout(
-        paper_bgcolor="white",
+    fig_regions.update_traces(
+        textposition="outside",
+        marker_line_width=0,
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Fotode arv: %{x}<extra></extra>"
+        ),
+    )
+
+    fig_regions.update_layout(
+        height=540,
+
         plot_bgcolor="white",
-        height=350,
-        margin=dict(l=20, r=20, t=20, b=20),
-        showlegend=False,
+        paper_bgcolor="white",
+
         coloraxis_showscale=False,
-        yaxis_title="",
+
+        margin=dict(
+            t=20,
+            l=20,
+            r=10,
+            b=20
+        ),
+
+        xaxis_title="Fotode arv",
+        yaxis_title="Kihelkond",
+
+        font=dict(size=15),
+
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(0,0,0,0.06)",
+            zeroline=False,
+        ),
+
+        yaxis=dict(
+            showgrid=False,
+        ),
     )
 
-    fig_region.update_traces(
-        hovertemplate="<b>%{y}</b><br>Fotode arv: %{x}<extra></extra>"
+    st.plotly_chart(
+        fig_regions,
+        use_container_width=True,
+        config={"displayModeBar": False}
     )
-
-    st.plotly_chart(fig_region, use_container_width=True)
-
 
 # GEOJSON - KIHELKONNA PIIRID
 with open("data/areas.geojson", "r", encoding="utf-8") as f:
@@ -776,9 +821,13 @@ with tab3:
         st.warning("Valitud filtritega sobivaid märksõnu ei leitud.")
         st.stop()
 
-    # TOP KATEGOORIAD
+# TOP KATEGOORIAD
     st.markdown("---")
     st.subheader("Kõige sagedasemad kategooriad")
+
+    st.caption(
+        "Diagramm näitab, millised märksõnade kategooriad esinevad fotoarhiivis kõige sagedamini."
+    )
 
     filtered_pids = df["PID"].astype(str).str.strip().unique()
 
@@ -787,30 +836,73 @@ with tab3:
     ]
 
     category_counts = (
-        filtered_categories["Kategooria"].value_counts().head(10).reset_index()
+        filtered_categories["Kategooria"]
+        .value_counts()
+        .head(8)
+        .reset_index()
     )
 
     category_counts.columns = ["Kategooria", "Fotode arv"]
+
+    category_counts = category_counts.sort_values(
+        by="Fotode arv",
+        ascending=True
+    )
 
     fig_categories = px.bar(
         category_counts,
         x="Fotode arv",
         y="Kategooria",
         orientation="h",
+        text="Fotode arv",
         color="Fotode arv",
-        color_continuous_scale="Tealgrn",
+        color_continuous_scale=[
+            "#A8E6CF",
+            "#6FD3B3",
+            "#3DB7A3",
+            "#2A7F9E"
+        ],
+    )
+
+    fig_categories.update_traces(
+        textposition="outside",
+        marker_line_width=0,
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Fotode arv: %{x}<extra></extra>"
+        ),
     )
 
     fig_categories.update_layout(
-        yaxis=dict(categoryorder="total ascending"),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
+        height=520,
+
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+
         coloraxis_showscale=False,
-        height=500,
+
+        margin=dict(t=20, l=20, r=40, b=20),
+
+        xaxis_title="Fotode arv",
+        yaxis_title="Kategooria",
+
+        font=dict(size=15),
+
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(0,0,0,0.06)",
+            zeroline=False,
+        ),
+
+        yaxis=dict(
+            showgrid=False,
+        ),
     )
 
     st.plotly_chart(
-        fig_categories, use_container_width=True, config={"displayModeBar": False}
+        fig_categories,
+        use_container_width=True,
+        config={"displayModeBar": False},
     )
     # KÕIGE SAGEDAMASED 80 MÄRKSÕNA
     st.markdown("---")
@@ -873,43 +965,13 @@ with tab3:
 
     components.html(cards_html, height=700, scrolling=True)
 
-    # TOP 15
-    st.markdown("---")
-    st.markdown("### TOP 15 märksõna")
-
-    if len(keyword_counts) < 3:
-        st.info("Valitud filtritega on saadaval väga vähe märksõnu.")
-
-    top15 = keyword_counts.head(15).reset_index()
-    top15.columns = ["Märksõna", "Fotode arv"]
-
-    fig_top = px.bar(
-        top15,
-        x="Fotode arv",
-        y="Märksõna",
-        orientation="h",
-        color="Fotode arv",
-        color_continuous_scale="Tealgrn",
-    )
-    fig_top.update_traces(marker_line_width=0)
-
-    fig_top.update_layout(
-        yaxis=dict(categoryorder="total ascending"),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        coloraxis_showscale=False,
-    )
-
-    st.plotly_chart(fig_top, use_container_width=True, config={"displayModeBar": False})
-
-    st.caption(
-        f"Kõige sagedasem märksõna on '{keyword_counts.index[0]}', "
-        f"mida esineb {keyword_counts.iloc[0]} korda."
-    )
     # MÄRKSÕNA AJAS
 
     st.markdown("---")
     st.subheader("Märksõna ajas")
+    st.caption(
+        "Graafik näitab, kuidas valitud märksõna kasutus fotoarhiivis ajas muutus."
+    )
 
     selected_word = st.selectbox("Vali märksõna", keyword_counts.index)
 
@@ -949,39 +1011,98 @@ with tab3:
     st.markdown("---")
     st.subheader("Seotud märksõnad")
 
-    selected_pids = set(
-        marksoned[marksoned["Märksõna"] == selected_word]["PID"].astype(str)
+    st.caption(
+        "Diagramm näitab märksõnu, mis esinevad kõige sagedamini koos valitud märksõnaga."
     )
 
-    related_df = marksoned[marksoned["PID"].astype(str).isin(selected_pids)]
+    selected_pids = set(
+        marksoned[
+            marksoned["Märksõna"] == selected_word
+        ]["PID"].astype(str)
+    )
+
+    related_df = marksoned[
+        marksoned["PID"].astype(str).isin(selected_pids)
+    ]
 
     related_counts = (
-        related_df[related_df["Märksõna"] != selected_word]["Märksõna"]
+        related_df[
+            related_df["Märksõna"] != selected_word
+        ]["Märksõna"]
         .value_counts()
         .head(10)
         .reset_index()
     )
 
-    related_counts.columns = ["Märksõna", "Seose tugevus"]
+    related_counts.columns = [
+        "Märksõna",
+        "Seose tugevus"
+    ]
+
+    related_counts = related_counts.sort_values(
+        by="Seose tugevus",
+        ascending=True
+    )
 
     fig_related = px.bar(
         related_counts,
         x="Seose tugevus",
         y="Märksõna",
         orientation="h",
+        text="Seose tugevus",
         color="Seose tugevus",
-        color_continuous_scale="Tealgrn",
+        color_continuous_scale=[
+            "#A8E6CF",
+            "#6FD3B3",
+            "#3DB7A3",
+            "#2A7F9E"
+        ],
+    )
+
+    fig_related.update_traces(
+        textposition="outside",
+        marker_line_width=0,
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Seose tugevus: %{x}<extra></extra>"
+        ),
     )
 
     fig_related.update_layout(
-        yaxis=dict(categoryorder="total ascending"),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
+        height=520,
+
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+
         coloraxis_showscale=False,
+
+        margin=dict(
+            t=20,
+            l=20,
+            r=10,
+            b=20
+        ),
+
+        xaxis_title="Seose tugevus",
+        yaxis_title="Märksõna",
+
+        font=dict(size=15),
+
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(0,0,0,0.06)",
+            zeroline=False,
+        ),
+
+        yaxis=dict(
+            showgrid=False,
+        ),
     )
 
     st.plotly_chart(
-        fig_related, use_container_width=True, config={"displayModeBar": False}
+        fig_related,
+        use_container_width=True,
+        config={"displayModeBar": False}
     )
 
 with tab4:
@@ -1030,7 +1151,9 @@ with tab4:
         with col1:
 
             st.subheader("Kõige sagedasemad isikud")
-
+            st.caption(
+                "Diagramm kuvab isikud, kes esinevad andmestikus kõige sagedamini."
+            )
             top_isik_n = st.slider(
                 "Näita top N isikut", 5, 20, 10, key="top_isikud_slider"
             )
@@ -1067,7 +1190,9 @@ with tab4:
         with col2:
 
             st.subheader("Koos esinevad isikupaarid")
-
+            st.caption(
+                "Diagramm näitab, millised isikupaarid esinevad fotodel kõige sagedamini koos."
+            )
             top_pair_n = st.slider(
                 "Näita top N isikupaari", 5, 15, 10, key="top_isikupaarid_slider"
             )
@@ -1126,11 +1251,15 @@ with tab4:
 
         st.markdown("---")
         st.subheader("Isiku otsing")
-
+        st.caption(
+            "Tabel kuvab kõik valitud isikuga seotud fotod ja nende metaandmed."
+        )
         selected_person = st.selectbox(
             "Vali isik", sorted(isikud_filtered["Isik"].dropna().astype(str).unique())
         )
-
+        st.caption(
+            "Tabel kuvab kõik valitud isikuga seotud fotod ja nende metaandmed."
+        )
         person_pids = (
             isikud_filtered[isikud_filtered["Isik"] == selected_person]["PID"]
             .astype(str)
@@ -1151,7 +1280,9 @@ with tab4:
         # ISIKUD AJAS
         st.markdown("---")
         st.subheader("Isik ajas")
-
+        st.caption(
+            "Graafik näitab valitud isiku esinemist fotodel aastate lõikes."
+        )
         person_years = (
             person_df[person_df["Aasta"].notna()]
             .groupby("Aasta")
@@ -1182,7 +1313,9 @@ with tab4:
         # KOOS ESINEVAD ISIKUD
         st.markdown("---")
         st.subheader("Koos esinevad isikud")
-
+        st.caption(
+            "Diagramm näitab, millised isikud esinevad fotodel kõige sagedamini koos teiste isikutega."
+        )
         related_people = isikud_filtered[
             isikud_filtered["PID"].astype(str).isin(person_pids)
         ].copy()
