@@ -89,8 +89,20 @@ with tab1:
 
     xlsx_path = "ERA_fotod_250426.xlsx"
 
-    st.title("ERA Photo Archive Dashboard")
+    st.title("ERA Fotoarhiivi analüütiline Dashboard")
+    st.markdown("""
+    Käesolev interaktiivne juhtlaud võimaldab uurida Eesti Rahvaluule Arhiivi
+    (ERA) fotoarhiivi ruumilisi, ajalisi ja temaatilisi mustreid.
 
+    Rakendus põhineb arhiveeritud fotode metaandmetel ning võimaldab analüüsida:
+    - fotode jaotust ajas ja piirkondades,
+    - märksõnade ja kategooriate sagedust,
+    - isikute ja fotograafide võrgustikke,
+    - fotodel esinevaid seoseid ja mustreid.
+
+    Juhtlaud on loodud digihumanitaaria projekti raames eesmärgiga pakkuda
+    visuaalseid tööriistu kultuuripärandi andmete uurimiseks.
+    """)
     #### SIDE BAR ###
     st.sidebar.header("Filtrid")
 
