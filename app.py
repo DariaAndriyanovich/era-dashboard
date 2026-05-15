@@ -501,49 +501,65 @@ with tab1:
     # KIHELKONNAD AJAS
 
     st.markdown("### Kihelkonnad ajas")
-    st.caption("Graafik näitab erinevate kihelkondade fotode arvu muutumist ajas.")
+    st.caption("Fotode arvu muutus ajas valitud kihelkondades.")
 
-    all_kih = sorted(df["Kihelkond"].dropna().astype(str).unique())
+    all_kih = sorted(
+        df["Kihelkond"]
+        .dropna()
+        .astype(str)
+        .unique()
+    )
 
-    top_kih = df["Kihelkond"].value_counts().head(5).index.tolist()
+    top_kih = (
+        df["Kihelkond"]
+        .value_counts()
+        .head(4)
+        .index
+        .tolist()
+    )
 
     selected_kih = st.multiselect(
-        "Vali max 5 kihelkonda",
-        options=all_kih,
+        "Vali kuni 4 kihelkonda",
+        all_kih,
         default=top_kih,
+        max_selections=4,
     )
 
-    timeline_df = (
-        df[df["Kihelkond"].isin(selected_kih)]
-        .groupby(["Aasta", "Kihelkond"])
-        .size()
-        .reset_index(name="Fotode arv")
-    )
+    if selected_kih:
 
-    fig_timeline = px.line(
-        timeline_df,
-        x="Aasta",
-        y="Fotode arv",
-        color="Kihelkond",
-        markers=False,
-        line_shape="spline",
-    )
+        timeline_df = (
+            df[df["Kihelkond"].isin(selected_kih)]
+            .groupby(["Aasta", "Kihelkond"])
+            .size()
+            .reset_index(name="Fotode arv")
+        )
 
-    fig_timeline.update_layout(
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        height=550,
-        margin=dict(l=20, r=20, t=30, b=20),
-        font=dict(size=14),
-        hovermode="x unified",
-        legend_title="Kihelkond",
-    )
+        fig_timeline = px.line(
+            timeline_df,
+            x="Aasta",
+            y="Fotode arv",
+            color="Kihelkond",
+            line_shape="spline",
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
 
-    fig_timeline.update_traces(
-        line=dict(width=2.5),
-    )
+        fig_timeline.update_traces(
+            line=dict(width=2),
+        )
 
-    st.plotly_chart(fig_timeline, use_container_width=True)
+        fig_timeline.update_layout(
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            height=500,
+            margin=dict(l=20, r=20, t=30, b=20),
+            hovermode="x unified",
+            showlegend=True,
+        )
+
+    st.plotly_chart(
+        fig_timeline,
+        use_container_width=True
+    )
 
     # KÕIGE SAGEDASEMAD ASUKOHAD
 
@@ -591,7 +607,7 @@ with tab1:
         df["Kihelkond"]
         .dropna()
         .value_counts()
-        .head(8)
+        .head(10)
         .reset_index()
     )
 
