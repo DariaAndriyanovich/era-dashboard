@@ -1567,27 +1567,199 @@ with tab4:
 
             components.html(html, height=950)
 
+# ANDMETABELI LISAVEERUD
 
-with tab5:
-    # ANDMETE TABEL CSV KUJUL
-    st.markdown("### Näidis andmestikust")
-    st.caption("Valik ERA fotoarhiivi andmestikust.")
+df_table = df.copy()
 
-    show_cols = ["PID", "Sisu kirjeldus", "Koht täpsemalt", "Kihelkond", "Aasta"]
+df_table["PID"] = df_table["PID"].astype(str).str.strip()
 
-    df_show = df[show_cols].rename(
-        columns={
-            "PID": "Foto ID",
-            "Sisu kirjeldus": "Kirjeldus",
-            "Koht täpsemalt": "Asukoht",
-            "Kihelkond": "Kihelkond",
-            "Aasta": "Aasta",
-        }
+if "Fotograaf (puhastatud)" in master.columns:
+    photographers = (
+        master[["PID", "Fotograaf (puhastatud)"]]
+        .dropna()
+        .drop_duplicates()
+        .groupby("PID")["Fotograaf (puhastatud)"]
+        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
+        .reset_index()
+        .rename(columns={"Fotograaf (puhastatud)": "Fotograaf"})
     )
 
-    st.caption("Esimesed 100 rida ERA fotoarhiivi andmestikust.")
+    df_table = df_table.drop(columns=["Fotograaf"], errors="ignore")
+    df_table = df_table.merge(photographers, on="PID", how="left")
 
-    st.dataframe(df[show_cols].head(100), use_container_width=True, height=350)
+if "Žanr" in master.columns:
+    genres = master[["PID", "Žanr"]].drop_duplicates("PID")
+
+    df_table = df_table.drop(columns=["Žanr"], errors="ignore")
+    df_table = df_table.merge(genres, on="PID", how="left")
+
+if "failinimi" in master.columns:
+    filenames = master[["PID", "failinimi"]].drop_duplicates("PID")
+
+    df_table = df_table.drop(columns=["failinimi"], errors="ignore")
+    df_table = df_table.merge(filenames, on="PID", how="left")
+
+if not people_df.empty and "Isik" in people_df.columns:
+    people_table = (
+        people_df[["PID", "Isik"]]
+        .dropna()
+        .drop_duplicates()
+        .groupby("PID")["Isik"]
+        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
+        .reset_index()
+        .rename(columns={"Isik": "Isik pildil"})
+    )
+
+    df_table = df_table.drop(columns=["Isik pildil"], errors="ignore")
+    df_table = df_table.merge(people_table, on="PID", how="left")
+
+if not marksoned.empty and "Märksõna" in marksoned.columns:
+    keywords_table = (
+        marksoned[["PID", "Märksõna"]]
+        .dropna()
+        .drop_duplicates()
+        .groupby("PID")["Märksõna"]
+        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
+        .reset_index()
+        .rename(columns={"Märksõna": "ERA märksõnad"})
+    )
+
+    df_table = df_table.drop(columns=["ERA märksõnad"], errors="ignore")
+    df_table = df_table.merge(keywords_table, on="PID", how="left")
+
+if not marksona_kategooriad.empty and "Kategooria" in marksona_kategooriad.columns:
+    categories_table = (
+        marksona_kategooriad[["PID", "Kategooria"]]
+        .dropna()
+        .drop_duplicates()
+        .groupby("PID")["Kategooria"]
+        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
+        .reset_index()
+        .rename(columns={"Kategooria": "Märksõna kategooria"})
+    )
+
+    df_table = df_table.drop(columns=["Märksõna kategooria"], errors="ignore")
+    df_table = df_table.merge(categories_table, on="PID", how="left")
+
+with tab5:
+  #ANDMETABEL
+    st.subheader("Andmetabel")
+    st.caption(
+        "Interaktiivne tabel võimaldab filtreeritud ERA fotoandmestikku uurida, "
+        "otsida ja eksportida CSV-formaadis."
+    )
+
+    column_mapping = {
+      "PID": "PID",
+      "Aasta": "Aasta",
+      "Kihelkond": "Kihelkond",
+      "Koht täpsemalt": "Koht täpsemalt",
+      "Fotograaf": "Fotograaf",
+      "Isik pildil": "Isik pildil",
+      "Žanr": "Žanr",
+      "Sisu kirjeldus": "Sisu kirjeldus",
+      "ERA märksõnad": "ERA märksõnad",
+      "Märksõna kategooria": "Märksõna kategooria",
+      "pred_top1": "pred_top1",
+      "failinimi": "failinimi",
+      "Latitude": "Latitude",
+      "Longitude": "Longitude",
+    }
+
+    available_columns = {
+        label: real_col
+        for label, real_col in column_mapping.items()
+        if real_col in df_table.columns
+    }
+
+    selected_labels = st.multiselect(
+        "Vali kuvatavad veerud",
+        list(available_columns.keys()),
+        default=list(available_columns.keys()),
+    )
+
+    selected_columns = [
+        available_columns[label]
+        for label in selected_labels
+    ]
+
+    search_query = st.text_input(
+        " Otsi (kirjeldus, kihelkond, fotograaf, märksõna)"
+    )
+
+    table_df = df_table.copy()
+
+    if search_query:
+
+        mask = pd.Series(False, index=table_df.index)
+
+        searchable_columns = [
+            "Sisu kirjeldus",
+            "Kihelkond",
+            "Koht täpsemalt",
+            "Fotograaf",
+            "Isik pildil",
+            "ERA märksõnad",
+            "Märksõna kategooria",
+            "pred_top1",
+        ]
+
+        for col in searchable_columns:
+
+            if col in table_df.columns:
+
+                mask |= safe_contains(
+                    table_df[col],
+                    search_query
+                )
+
+        table_df = table_df[mask]
+
+    display_df = table_df[selected_columns].copy()
+
+    display_df.columns = selected_labels
+
+    display_df = display_df.fillna("—")
+
+    display_df = display_df.replace(
+        ["None", "none", "nan", "NaN", ""],
+        "—"
+    )
+
+    st.markdown(
+        f"Näidatakse **{len(display_df):,}** rida"
+    )
+
+    st.dataframe(
+        display_df.head(500),
+        use_container_width=True,
+        hide_index=True,
+        height=550,
+    )
+
+    if len(display_df) > 500:
+
+        st.caption(
+            "Tabelis kuvatakse esimesed 500 rida. "
+            "Täpsemaks vaateks kasuta filtreid või otsingut."
+        )
+
+    # CSV ALLALAADIMINE
+
+    csv = display_df.to_csv(
+        index=False
+    ).encode("utf-8")
+
+    st.download_button(
+        label="Laadi filtreeritud andmestik alla (CSV)",
+        data=csv,
+        file_name="era_filtreeritud_andmestik.csv",
+        mime="text/csv",
+    )
+
+    st.caption(
+        "Alla laaditakse hetkel filtrite ja otsinguga kuvatud andmestik."
+    )
 
     # ANDMETE KVALITEET
     st.markdown("---")
@@ -1620,7 +1792,14 @@ with tab5:
     st.subheader("Kõige sagedasemad fotograafid")
 
     top_fotograafid = (
-        df["Sisu kirjeldus"].dropna().value_counts().head(10).reset_index()
+        df_table["Fotograaf"]
+        .dropna()
+        .astype(str)
+        .str.split(", ")
+        .explode()
+        .value_counts()
+        .head(10)
+        .reset_index()
     )
 
     top_fotograafid.columns = ["Fotograaf", "Fotode arv"]
@@ -1661,20 +1840,14 @@ with tab5:
     missing = missing[missing["Puuduvaid väärtusi"] > 0]
     missing = missing.sort_values("Puuduvaid väärtusi", ascending=False)
 
-    st.dataframe(missing)
-    # Filtreeritud andmestiku allalaadimise nupp
-    st.markdown("---")
-
-    csv = df.to_csv(index=False).encode("utf-8")
-
-    st.download_button(
-        label="Laadi filtreeritud andmestik alla (CSV)",
-        data=csv,
-        file_name="ERA_fotoarhiiv_filtreeritud.csv",
-        mime="text/csv",
+    st.dataframe(
+      missing,
+      use_container_width=True,
+      hide_index=True,
+      height=350
     )
 
-    st.caption("Alla laaditakse hetkel filtritega kuvatud andmestik.")
+
 st.markdown("---")
 st.caption(
     "ERA Photo Archive Dashboard • Digital Humanities Project • University of Tartu"
