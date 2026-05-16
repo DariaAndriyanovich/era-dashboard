@@ -11,9 +11,12 @@ import networkx as nx
 from pyvis.network import Network
 import tempfile
 
-### LEHE STIIL JA SEADISTUSED ###
+# LEHE STIIL JA SEADISTUSED
+
+# Streamlit lehe üldised seaded
 st.set_page_config(page_title="ERA Dashboard", layout="wide")
 
+# põhikonteineri ja pealkirjade stiil
 st.markdown(
     """
 <style>
@@ -30,8 +33,10 @@ h1, h2, h3 {
     unsafe_allow_html=True,
 )
 
+# Plotly vaikimisi teema
 px.defaults.template = "plotly_white"
 
+# sakkide visuaalne kujundus
 st.markdown(
     """
 <style>
@@ -52,45 +57,61 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-### TABIDE LOOMINE ###
+# TABIDE LOOMINE
 
+# rakenduse põhivaated
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     ["Ajaline analüüs", "Kaart", "Märksõnad", "Isikud", "ML analüüs", "Andmed"]
 )
 
-df = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_koordinaatidega")
+# põhifail koordinaatidega fotode jaoks
+df = pd.read_excel(
+    "ERA_fotod_250426.xlsx",
+    sheet_name="fotod_koordinaatidega"
+)
 
+# eemaldab veerunimedest liigsed tühikud
 df.columns = df.columns.str.strip()
 
-master = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_master")
+# mastertabel kõigi põhiandmetega
+master = pd.read_excel(
+    "ERA_fotod_250426.xlsx",
+    sheet_name="fotod_master"
+)
 
+# eemaldab veerunimedest liigsed tühikud
 master.columns = master.columns.str.strip()
 
 # ML ANDMED
 
+# CLIP mudeli tulemuste laadimine
 ml_data = pd.read_excel(
     "era_clip_KOIK_pildid_sigmoid.xlsx"
 )
 
+# algsete ML andmete koopia
 ml_raw = ml_data.copy()
 
+# veerunimede puhastamine
 ml_data.columns = (
     ml_data.columns
     .astype(str)
     .str.strip()
 )
 
+# veerunimede ühtlustamine
 ml_data = ml_data.rename(columns={
     "true_clusters": "Märksõna kategooria",
     "top1_score": "pred_top1_score",
     "margin_top1_top2": "confidence_margin_top1_top2"
 })
 
-ml_raw = ml_data.copy()
-
+# uuendatud ML andmete koopia
 ml_raw = ml_data.copy()
 
 # CLIP METRICS
+
+# ML mudeli kvaliteedinäitajate laadimine
 try:
 
     ml_metrics = pd.read_excel(
@@ -98,29 +119,33 @@ try:
         sheet_name="cluster_metrics"
     )
 
+    # veerunimede puhastamine
     ml_metrics.columns = (
         ml_metrics.columns
         .astype(str)
         .str.strip()
     )
 
+# kui metrics lehte ei leita, luuakse tühi tabel
 except Exception:
 
     ml_metrics = pd.DataFrame()
 
+# ML tabeli veerunimede puhastamine
 ml_data.columns = (
     ml_data.columns
     .astype(str)
     .str.strip()
 )
 
+# PID väärtuste ühtlustamine merge jaoks
 ml_data["PID"] = (
     ml_data["PID"]
     .astype(str)
     .str.strip()
 )
 
-# ainult vajalikud veerud
+# ainult vajalikud ML veerud
 
 ml_columns = [
 
@@ -144,6 +169,7 @@ ml_columns = [
 
 ]
 
+# kontrollitakse, millised vajalikud veerud on olemas
 existing_ml_cols = [
 
     c for c in ml_columns
@@ -151,6 +177,7 @@ existing_ml_cols = [
 
 ]
 
+# alles jäetakse ainult vajalikud veerud ja eemaldatakse duplikaadid PID järgi
 ml_data = (
     ml_data[existing_ml_cols]
     .drop_duplicates(subset=["PID"])
@@ -158,21 +185,25 @@ ml_data = (
 
 # MERGE
 
+# PID väärtuste ühtlustamine enne tabelite ühendamist
 df["PID"] = (
     df["PID"]
     .astype(str)
     .str.strip()
 )
 
+# ML andmete ühendamine põhiandmestikuga
 df = df.merge(
     ml_data,
     on="PID",
     how="left"
 )
 
+# PID väärtuste puhastamine mõlemas tabelis
 df["PID"] = df["PID"].astype(str).str.strip()
 master["PID"] = master["PID"].astype(str).str.strip()
 
+# master tabelist vajalike veergude valimine
 master_small = master[
     [
         "PID",
@@ -183,12 +214,14 @@ master_small = master[
     ]
 ].drop_duplicates(subset=["PID"])
 
+# fotograafi veeru ümbernimetamine
 master_small = master_small.rename(
     columns={
         "Fotograaf (puhastatud)": "Fotograaf"
     }
 )
 
+# vanade veergude eemaldamine enne uut merge'i
 df = df.drop(
     columns=[
         "Aasta",
@@ -199,25 +232,34 @@ df = df.drop(
     errors="ignore"
 )
 
+# master tabeli andmete ühendamine põhiandmestikuga
 df = df.merge(
     master_small,
     on="PID",
     how="left"
 )
 
+# võimalike duplikaatide eemaldamine
 df = df.drop_duplicates()
 
+# aasta teisendamine numbriliseks väärtuseks
 df["Aasta"] = (
     pd.to_numeric(df["Aasta"], errors="coerce")
     .apply(lambda x: int(x) if pd.notna(x) else None)
 )
 
-
+# koordinaatide teisendamine numbriliseks
 df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
 df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
 
-df["koordinaadid_leitud"] = df["Latitude"].notna() & df["Longitude"].notna()
+# kontroll, kas fotol on olemas mõlemad koordinaadid
+df["koordinaadid_leitud"] = (
+    df["Latitude"].notna()
+    &
+    df["Longitude"].notna()
+)
 
+# kaardi jaoks piirkonnanime puhastamine
 df["kaardi_piirkond"] = (
     df["Kihelkond"]
     .astype(str)
