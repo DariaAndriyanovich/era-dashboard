@@ -62,8 +62,6 @@ df = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_koordinaatidega")
 
 df.columns = df.columns.str.strip()
 
-st.write(df.columns.tolist())
-
 master = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_master")
 
 master.columns = master.columns.str.strip()
@@ -183,7 +181,11 @@ df = df.merge(
 
 df = df.drop_duplicates()
 
-df["Aasta"] = pd.to_numeric(df["Aasta"], errors="coerce")
+df["Aasta"] = (
+    pd.to_numeric(df["Aasta"], errors="coerce")
+    .apply(lambda x: int(x) if pd.notna(x) else None)
+)
+
 
 df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
 df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
@@ -1029,7 +1031,13 @@ def build_hover(row, cols):
 
         if c in row and pd.notna(row[c]):
 
-            val = str(row[c]).strip()
+            if c == "Aasta":
+
+                val = str(int(float(row[c])))
+
+            else:
+
+                val = str(row[c]).strip()
 
             if val:
 
@@ -1155,6 +1163,12 @@ with tab2:
                 counts["kaardi_piirkond"]
                 .isin(geo_names)
             ].copy()
+
+            missing_regions = sorted(
+                set(counts["kaardi_piirkond"]) - set(geo_names)
+            )
+
+            st.write(missing_regions)
 
             # DEBUG
             # st.write(geo_c.head())
