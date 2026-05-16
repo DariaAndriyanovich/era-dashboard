@@ -3863,70 +3863,116 @@ with tab5:
                 "Top5 kattuvus",
                 f"{eval_df['top5_match'].mean() * 100:.1f}%"
             )
-            
+
+# ANDMETABELI TAB
 with tab6:
-  #ANDMETABEL
+
+    # TABI PEALKIRI JA KIRJELDUS
     st.subheader("Andmetabel")
+
     st.caption(
         "Interaktiivne tabel võimaldab filtreeritud ERA fotoandmestikku uurida, "
         "otsida ja eksportida CSV-formaadis."
     )
 
+    # VEERGUDE NIMEDE VASTAVUS
     column_mapping = {
+
       "PID": "PID",
+
       "Aasta": "Aasta",
+
       "Kihelkond": "Kihelkond",
+
       "Koht täpsemalt": "Koht täpsemalt",
+
       "Fotograaf": "Fotograaf",
+
       "Isik pildil": "Isik pildil",
+
       "Žanr": "Žanr",
+
       "Sisu kirjeldus": "Sisu kirjeldus",
+
       "ERA märksõnad": "ERA märksõnad",
+
       "Märksõna kategooria": "Märksõna kategooria",
+
       "pred_top1": "pred_top1",
+
       "failinimi": "failinimi",
+
       "Latitude": "Latitude",
+
       "Longitude": "Longitude",
     }
 
+    # VALIB AINULT OLEMASOLEVAD VEERUD
     available_columns = {
+
         label: real_col
+
         for label, real_col in column_mapping.items()
+
         if real_col in df_table.columns
     }
 
+    # VEERGUDE VALIK KASUTAJALE
     selected_labels = st.multiselect(
+
         "Vali kuvatavad veerud",
+
         list(available_columns.keys()),
+
         default=list(available_columns.keys()),
     )
 
+    # TEISENDAB KUVATAVAD NIMED PÄRIS VEERUNIMEDEKS
     selected_columns = [
+
         available_columns[label]
+
         for label in selected_labels
     ]
 
+    # OTSINGUVÄLI
     search_query = st.text_input(
         " Otsi (kirjeldus, kihelkond, fotograaf, märksõna)"
     )
 
+    # KOPEERIB ANDMETABELI
     table_df = df_table.copy()
 
+    # FILTREERIB OTSINGU JÄRGI
     if search_query:
 
-        mask = pd.Series(False, index=table_df.index)
+        mask = pd.Series(
+            False,
+            index=table_df.index
+        )
 
+        # VEERUD,
+        # KUS OTSING TOIMUB
         searchable_columns = [
+
             "Sisu kirjeldus",
+
             "Kihelkond",
+
             "Koht täpsemalt",
+
             "Fotograaf",
+
             "Isik pildil",
+
             "ERA märksõnad",
+
             "Märksõna kategooria",
+
             "pred_top1",
         ]
 
+        # OTSIB TEKSTI KÕIKIDEST VALITUD VEERGUDEST
         for col in searchable_columns:
 
             if col in table_df.columns:
@@ -3938,10 +3984,13 @@ with tab6:
 
         table_df = table_df[mask]
 
+    # LOOB KUVATAVA TABELI
     display_df = table_df[selected_columns].copy()
 
+    # MUUDAB VEERUNIMED KASUTAJALE LOETAVAKS
     display_df.columns = selected_labels
 
+    # ASENDAB TÜHJAD VÄÄRTUSED
     display_df = display_df.fillna("—")
 
     display_df = display_df.replace(
@@ -3949,17 +3998,25 @@ with tab6:
         "—"
     )
 
+    # KUVATAVATE RIDADE ARV
     st.markdown(
         f"Näidatakse **{len(display_df):,}** rida"
     )
 
+    # KUVAB TABELI
     st.dataframe(
+
         display_df.head(500),
+
         use_container_width=True,
+
         hide_index=True,
+
         height=550,
     )
 
+    # TEAVITUS,
+    # KUI RIDU ON ROHKEM KUI 500
     if len(display_df) > 500:
 
         st.caption(
@@ -3969,14 +4026,20 @@ with tab6:
 
     # CSV ALLALAADIMINE
 
+    # TEISENDAB TABELI CSV FORMAATI
     csv = display_df.to_csv(
         index=False
     ).encode("utf-8")
 
+    # ALLALAADIMISE NUPP
     st.download_button(
+
         label="Laadi filtreeritud andmestik alla (CSV)",
+
         data=csv,
+
         file_name="era_filtreeritud_andmestik.csv",
+
         mime="text/csv",
     )
 
@@ -3984,14 +4047,17 @@ with tab6:
         "Alla laaditakse hetkel filtrite ja otsinguga kuvatud andmestik."
     )
 
-  # ANDMETE KVALITEET
+    # ANDMETE KVALITEEDI ANALÜÜS
     st.markdown("---")
 
     st.subheader("Andmete kvaliteet")
 
+    # KÕIKIDE FOTODE ARV
     total = len(df)
 
+    # KOORDINAATIDEGA FOTOD
     with_coords = len(
+
         df[
             df["Latitude"].notna()
             &
@@ -3999,6 +4065,7 @@ with tab6:
         ]
     )
 
+    # KPI KAARDID
     col1, col2, col3 = st.columns(3)
 
     col1.metric(
@@ -4016,6 +4083,7 @@ with tab6:
         f"{total - with_coords:,}"
     )
 
+    # KOORDINAATIDE PROTSENT
     percent = round(
         (with_coords / total) * 100,
         1
@@ -4025,6 +4093,7 @@ with tab6:
         f"Kaardil kuvatakse **{percent}%** kõikidest fotodest."
     )
 
+    # ANDMETE KVALITEEDI HINNANG
     if percent < 50:
 
         st.warning(
@@ -4042,28 +4111,51 @@ with tab6:
         "ruumilist ja kaardipõhist analüüsi."
     )
 
-    # PUUDUVAD ANDMED
+    # PUUDUVATE ANDMETE ANALÜÜS
     st.markdown("---")
+
     st.subheader("Puuduvad andmed")
+
     st.caption(
         "Tabel näitab, millistes veergudes esineb kõige rohkem puuduvaid väärtusi."
     )
 
+    # LOEB PUUDUVAD VÄÄRTUSED
     missing = df.isnull().sum().reset_index()
-    missing.columns = ["Veerg", "Puuduvaid väärtusi"]
 
-    missing = missing[missing["Puuduvaid väärtusi"] > 0]
-    missing = missing.sort_values("Puuduvaid väärtusi", ascending=False)
+    missing.columns = [
+        "Veerg",
+        "Puuduvaid väärtusi"
+    ]
 
+    # JÄTAB ALLES AINULT VEERUD,
+    # KUS ON PUUDUVAID VÄÄRTUSI
+    missing = missing[
+        missing["Puuduvaid väärtusi"] > 0
+    ]
+
+    # SORTEERIB SUURIMA PUUDUVATE VÄÄRTUSTE ARVU JÄRGI
+    missing = missing.sort_values(
+        "Puuduvaid väärtusi",
+        ascending=False
+    )
+
+    # KUVAB PUUDUVATE ANDMETE TABELI
     st.dataframe(
+
       missing,
+
       use_container_width=True,
+
       hide_index=True,
+
       height=350
     )
 
 
+# LEHE LÕPUINFO
 st.markdown("---")
+
 st.caption(
     "ERA Photo Archive Dashboard • Digital Humanities Project • University of Tartu"
 )
