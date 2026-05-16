@@ -296,14 +296,14 @@ with tab1:
     xlsx_path = "ERA_fotod_250426.xlsx"
 
     # avalehe pealkiri
-    st.title("ERA Fotoarhiivi analüütiline juhtlaud")
+    st.title("ERA Fotokogu analüütiline juhtlaud")
 
     # projekti lühikirjeldus
     st.caption("Kultuuriandmete projekt · University of Tartu")
 
     # dashboardi sissejuhatav kirjeldus
     st.markdown("""
-    Käesolev interaktiivne juhtlaud võimaldab uurida Eesti Rahvaluule Arhiivi (ERA) fotoarhiivi ruumilisi, ajalisi ja temaatilisi mustreid.
+    Käesolev interaktiivne juhtlaud võimaldab uurida Eesti Rahvaluule Arhiivi (ERA) fotokogu ruumilisi, ajalisi ja temaatilisi mustreid.
 
     Rakendus põhineb arhiveeritud fotode metaandmetel ning võimaldab analüüsida:
     - fotode jaotust ajas ja piirkondades,
@@ -311,8 +311,8 @@ with tab1:
     - isikute ja fotograafide võrgustikke,
     - fotodel esinevaid seoseid ja mustreid.
 
-    Juhtlauas kasutatakse ERA fotoarhiivi esimest 10 000 digiteeritud fotot.
-    Kokku sisaldab ERA fotoarhiiv üle 88 000 foto.
+    Juhtlauas kasutatakse ERA fotokogu esimest 10 000 digiteeritud fotot.
+    Kokku sisaldab ERA fotokogu üle 88 000 foto.
 
     Juhtlaud on loodud kultuuriandmete projekti raames eesmärgiga pakkuda visuaalseid tööriistu kultuuripärandi andmete uurimiseks.
     """)
@@ -1997,6 +1997,9 @@ with tab2:
                 set(counts["kaardi_piirkond"]) - set(geo_names)
             )
 
+            # kuvab puuduvad piirkonnad kontrollimiseks
+            st.write(missing_regions)
+
             # kontroll,
             # kas kaardile jäi midagi kuvada
             if geo_c.empty:
@@ -2201,7 +2204,7 @@ with tab3:
     st.header("Fotokogu temaatiline analüüs")
 
     st.caption(
-        "Ülevaade ERA fotoarhiivi märksõnadest ja kategooriatest."
+        "Ülevaade ERA fotokogu märksõnadest ja kategooriatest."
     )
 
     # FILTREERITUD PID-DE VÕTMINE
@@ -2296,7 +2299,7 @@ with tab3:
     st.subheader("Kõige sagedasemad kategooriad")
 
     st.caption(
-        "Diagramm näitab, millised märksõnade kategooriad esinevad fotoarhiivis kõige sagedamini."
+        "Diagramm näitab, millised märksõnade kategooriad esinevad fotokogus kõige sagedamini."
     )
 
     # võtab uuesti filtriga seotud PID-id
@@ -2496,7 +2499,7 @@ with tab3:
     st.subheader("Märksõna ajas")
 
     st.caption(
-        "Graafik näitab, kuidas valitud märksõna kasutus fotoarhiivis ajas muutus."
+        "Graafik näitab, kuidas valitud märksõna kasutus fotokogus ajas muutus."
     )
 
     # märksõna valik
@@ -3556,16 +3559,19 @@ def safe_contains(series, text):
     )
 
 # ML ANALÜÜSI TAB
+
 with tab5:
 
     # TABI PEALKIRI JA KIRJELDUS
+
     st.header(" ML märksõnade analüüs")
 
     st.markdown("""
     Kaks vaadet: põhifotodega seotud CLIP tulemused (PID olemas) ja kõik CLIP sh `image_only`.
     """)
 
-    # SELGITAV PILT CLIP TÖÖST
+    # SELGITAV PILT CLIP MUDELI TÖÖ KOHTA
+
     st.image(
         "clip_yhe_pildi_selgitus.png",
         use_container_width=True
@@ -3575,32 +3581,38 @@ with tab5:
         "Näide: CLIP pildi ja tekstikategooriate sobivuse hindamine"
     )
 
-    # KOPEERIB FILTREERITUD PÕHIANDMED ML ANALÜÜSI JAOKS
+    # ML ANDMETE KOPEERIMINE
+
     ml_df = df.copy()
 
     # KONTROLLIB,
     # KAS ML VEERUD ON OLEMAS
+
     if "pred_top1" not in ml_df.columns:
 
         st.warning("ML andmeid ei leitud.")
 
     else:
 
-        # KPI PLOKK
+        # KPI NÄITAJAD
+
         st.markdown("---")
 
         c1, c2, c3, c4 = st.columns(4)
 
         # FILTRIS OLEVATE FOTODE ARV
+
         c1.metric(
             "Fotosid filtris",
             f"{len(df):,}"
         )
 
         # KÕIKIDE CLIP TULEMUSTE ARV
+
         clip_total = len(ml_raw)
 
-        # PID-GA CLIP TULEMUSED
+        # PID-GA CLIP TULEMUSTE ARV
+
         clip_pid = (
             ml_raw["PID"]
             .astype(str)
@@ -3620,6 +3632,7 @@ with tab5:
         ].count()
 
         # IMAGE-ONLY TULEMUSTE ARV
+
         image_only = clip_total - clip_pid
 
         c2.metric(
@@ -3638,13 +3651,15 @@ with tab5:
         )
 
         # SELGITUS IMAGE-ONLY TULEMUSTE KOHTA
+
         st.markdown("""
         `image_only` : pilt leiti kaustast, aga PID-i ei saanud külge panna.
         """)
 
+        # ML VAATE VALIK
+
         st.markdown("---")
 
-        # VAATE VALIK
         view_mode = st.radio(
             "Vali ML-vaade",
             [
@@ -3655,7 +3670,8 @@ with tab5:
         )
 
         # MÄÄRAB,
-        # MILLIST ANDMESTIKKU KUVAKSE
+        # MILLIST DATAFRAME'I KUVATAKSE
+
         if view_mode == "Kõik CLIP, sh image-only":
 
             graph_df = ml_raw.copy()
@@ -3669,21 +3685,25 @@ with tab5:
             manual_col = "Märksõna kategooria"
 
         # TOP KATEGOORIATE GRAAFIKUD
+
         col1, col2 = st.columns(2)
 
         # OLEMASOLEVAD KATEGOORIAD
+
         with col1:
 
             st.subheader("Olemasolevad kategooriad")
 
-            # LOEB KÄSITSI LISATUD KATEGOORIATE SAGEDUSED
+            # LOEB KÄSITSI MÄÄRATUD KATEGOORIATE SAGEDUSED
+
             if manual_col in graph_df.columns:
 
                 existing = split_cats(
                     graph_df[manual_col]
                 ).value_counts().head(20)
 
-            # JOONISTAB KATEGOORIATE GRAAFIKU
+            # JOONISTAB GRAAFIKU
+
             if not existing.empty:
 
                 fig_existing = px.bar(
@@ -3723,11 +3743,13 @@ with tab5:
                 )
 
         # CLIP TOP1 KATEGOORIAD
+
         with col2:
 
             st.subheader("CLIP top1 kategooriad")
 
             # LOEB CLIP TOP1 ENNUSTUSTE SAGEDUSED
+
             clip_top = (
                 graph_df["pred_top1"]
                 .dropna()
@@ -3736,7 +3758,8 @@ with tab5:
                 .head(20)
             )
 
-            # JOONISTAB CLIP TOP1 GRAAFIKU
+            # JOONISTAB CLIP GRAAFIKU
+
             if not clip_top.empty:
 
                 fig_clip = px.bar(
@@ -3775,13 +3798,16 @@ with tab5:
                     use_container_width=True
                 )
 
+        # ML JA KÄSITSI KATEGOORIATE KATTUVUS
+
         st.markdown("---")
 
-        # ML JA KÄSITSI KATEGOORIATE KATTUVUS
         st.subheader("ML ja olemasolevate kategooriate kattuvus")
 
         # VALIB READ,
-        # KUS ON NII ML ENNUSTUS KUI KA KÄSITSI KATEGOORIA
+        # KUS ON NII ML ENNUSTUS
+        # KUI KA KÄSITSI KATEGOORIA
+
         if manual_col in graph_df.columns:
 
             eval_df = graph_df[
@@ -3795,9 +3821,11 @@ with tab5:
             eval_df = pd.DataFrame()
 
         # ARVUTAB KATTUVUSE NÄITAJAD
+
         if not eval_df.empty:
 
             # TOP1 KATTUVUS
+
             eval_df["top1_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3810,6 +3838,7 @@ with tab5:
             )
 
             # TOP3 KATTUVUS
+
             eval_df["top3_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3826,6 +3855,7 @@ with tab5:
             )
 
             # TOP5 KATTUVUS
+
             eval_df["top5_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3843,7 +3873,8 @@ with tab5:
                 axis=1
             )
 
-            # KPI NÄITAJAD
+            # KPI KAARDID
+
             m1, m2, m3 = st.columns(3)
 
             m1.metric(
@@ -3861,12 +3892,305 @@ with tab5:
                 f"{eval_df['top5_match'].mean() * 100:.1f}%"
             )
 
+        # HEATMAP
+
+        st.markdown("---")
+
+        st.subheader("Kategooriate kattuvus")
+
+        # KOPEERIB HINDAMISE DATAFRAME'I
+
+        heat = eval_df.copy()
+
+        # JAGAB KATEGOORIAD ERALDI VÄÄRTUSTEKS
+
+        heat["manual"] = (
+            heat[manual_col]
+            .astype(str)
+            .str.replace(";", ",", regex=False)
+            .str.replace("|", ",", regex=False)
+            .str.split(",")
+        )
+
+        # TEEB IGAST KATEGOORIAST ERALDI REA
+
+        pairs = heat.explode("manual")
+
+        # PUHASTAB TEKSTI
+
+        pairs["manual"] = (
+            pairs["manual"]
+            .astype(str)
+            .str.strip()
+        )
+
+        # EEMALDAB TÜHJAD VÄÄRTUSED
+
+        pairs = pairs[
+            pairs["manual"] != ""
+        ]
+
+        # ARVUTAB KATTUVUSTE ARVU
+
+        mat = (
+            pairs
+            .groupby(["manual", "pred_top1"])
+            .size()
+            .reset_index(name="arv")
+        )
+
+        # JOONISTAB HEATMAPI
+
+        if not mat.empty:
+
+            fig_heat = px.density_heatmap(
+
+                mat,
+
+                x="pred_top1",
+
+                y="manual",
+
+                z="arv",
+
+                color_continuous_scale="Purples",
+
+                labels={
+                    "pred_top1": "CLIP top1",
+                    "manual": "Olemasolev kategooria",
+                    "arv": "Fotode arv"
+                }
+            )
+
+            fig_heat.update_layout(
+                height=650,
+                paper_bgcolor="white",
+                plot_bgcolor="white"
+            )
+
+            st.plotly_chart(
+                fig_heat,
+                use_container_width=True
+            )
+
+        # CLIP MUDELI KVALITEEDI ANALÜÜS
+
+        st.markdown("---")
+
+        if not ml_metrics.empty:
+
+            st.subheader(" CLIP mudeli kvaliteet kategooriate kaupa")
+
+            st.markdown("""
+            See graafik näitab,
+            milliste märksõnakategooriate puhul töötab CLIP mudel paremini.
+            Mida kõrgem väärtus,
+            seda täpsemalt suutis mudel vastavat kategooriat ennustada.
+            """)
+
+            # KOPEERIB METRICS DATAFRAME'I
+
+            mtr = ml_metrics.copy()
+
+            # PUHASTAB VEERUNIMED
+
+            mtr.columns = (
+                mtr.columns
+                .astype(str)
+                .str.strip()
+            )
+
+            # LEIAB SOBIVA TOP3 METRIC VEERU
+
+            mc2 = next(
+                (
+                    c for c in [
+                        "f1_top3",
+                        "top3_f1",
+                        "hit_any_top3",
+                        "top3_hit_rate"
+                    ]
+                    if c in mtr.columns
+                ),
+                None
+            )
+
+            # LEIAB KATEGOORIA VEERU
+
+            cc3 = next(
+                (
+                    c for c in [
+                        "cluster",
+                        "kategooria",
+                        "Märksõna kategooria"
+                    ]
+                    if c in mtr.columns
+                ),
+                None
+            )
+
+            # JOONISTAB GRAAFIKU
+
+            if mc2 and cc3:
+
+                mtr[mc2] = pd.to_numeric(
+                    mtr[mc2],
+                    errors="coerce"
+                )
+
+                fig = px.bar(
+
+                    mtr.dropna(subset=[mc2]).sort_values(mc2),
+
+                    x=mc2,
+                    y=cc3,
+
+                    orientation="h",
+
+                    title="Milliste kategooriate puhul CLIP paremini töötab?"
+                )
+
+                fig.update_layout(
+                    height=550
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # ML TULEMUSTE TABEL
+
+        st.markdown("---")
+
+        st.subheader("ML tulemuste tabel")
+
+        # OTSINGUVÄLI
+
+        search_ml = st.text_input(
+            "🔍 Otsi ML tabelist"
+        )
+
+        # KOPEERIB ANDMED
+
+        show_ml = graph_df.copy()
+
+        # FILTREERIB TABELI OTSINGU JÄRGI
+
+        if search_ml:
+
+            mask = pd.Series(
+                False,
+                index=show_ml.index
+            )
+
+            searchable_cols = [
+
+                "Sisu kirjeldus",
+                "Fotograaf",
+                "pred_top1",
+                "pred_top2",
+                "pred_top3",
+                "Märksõna kategooria"
+
+            ]
+
+            for col in searchable_cols:
+
+                if col in show_ml.columns:
+
+                    mask |= safe_contains(
+                        show_ml[col],
+                        search_ml
+                    )
+
+            show_ml = show_ml[mask]
+
+        # FILTER:
+        # NÄITA AINULT RIDU,
+        # KUS TOP3 EI KATTU
+
+        if st.checkbox(
+            "Näita ainult ridu, kus top3 ei kattu"
+        ):
+
+            show_ml = show_ml[
+                ~show_ml.apply(
+                    lambda r: cat_match(
+                        r,
+                        manual_col,
+                        [
+                            "pred_top1",
+                            "pred_top2",
+                            "pred_top3"
+                        ]
+                    ),
+                    axis=1
+                )
+            ]
+
+        # TABELIS KUVATAVAD VEERUD
+
+        ml_cols = [
+
+            c for c in [
+
+                "PID",
+                "Fotograaf",
+                "Märksõna kategooria",
+                "pred_top1",
+                "pred_top2",
+                "pred_top3",
+                "pred_top1_score",
+                "confidence_margin_top1_top2",
+                "ML top3 koondskoor",
+                "ML otsuse tugevus",
+                "Sisu kirjeldus",
+                "failinimi"
+
+            ]
+
+            if c in show_ml.columns
+        ]
+
+        # KUVATAVATE RIDADE ARV
+
+        st.markdown(
+            f"Näidatakse **{len(show_ml):,}** rida"
+        )
+
+        # KUVAB TABELI
+
+        st.dataframe(
+            show_ml[ml_cols].head(1000),
+            use_container_width=True,
+            hide_index=True,
+            height=650
+        )
+
+        # CSV EKSPORT
+
+        csv_ml = (
+            show_ml[ml_cols]
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+
+        # CSV ALLALAADIMISE NUPP
+
+        st.download_button(
+            " Lae ML tabel CSV-na",
+            data=csv_ml,
+            file_name="era_ml_tulemused.csv",
+            mime="text/csv"
+        )
+
 # ANDMETABELI LISAVEERUD
 
-# teeb põhiandmestikust koopia tabelivaate jaoks
+# kopeerib põhiandmed eraldi tabeli jaoks
 df_table = df.copy()
 
-# puhastab PID väärtused
+# puhastab PID väärtused merge jaoks
 df_table["PID"] = (
     df_table["PID"]
     .astype(str)
@@ -3875,11 +4199,9 @@ df_table["PID"] = (
 
 # FOTOGRAAFIDE LISAMINE
 
-# kontrollib,
-# kas master tabelis on fotograafi veerg olemas
 if "Fotograaf (puhastatud)" in master.columns:
 
-    # koondab kõik fotograafid ühe PID kohta
+    # koondab kõik sama PID fotograafid ühte veergu
     photographers = (
 
         master[
@@ -3893,8 +4215,7 @@ if "Fotograaf (puhastatud)" in master.columns:
         .groupby("PID")["Fotograaf (puhastatud)"]
 
         .apply(
-            lambda x:
-            ", ".join(
+            lambda x: ", ".join(
                 sorted(set(x.astype(str)))
             )
         )
@@ -3908,14 +4229,13 @@ if "Fotograaf (puhastatud)" in master.columns:
         )
     )
 
-    # eemaldab vana veeru,
-    # et merge ei tekitaks duplikaate
+    # eemaldab vana fotograafi veeru
     df_table = df_table.drop(
         columns=["Fotograaf"],
         errors="ignore"
     )
 
-    # lisab fotograafid põhiandmestikule
+    # lisab fotograafide andmed tabelisse
     df_table = df_table.merge(
         photographers,
         on="PID",
@@ -3924,17 +4244,13 @@ if "Fotograaf (puhastatud)" in master.columns:
 
 # ŽANRI LISAMINE
 
-# kontrollib,
-# kas žanri veerg on olemas
 if "Žanr" in master.columns:
 
-    # võtab unikaalsed žanrid PID järgi
+    # võtab žanri andmed master tabelist
     genres = (
-
         master[
             ["PID", "Žanr"]
         ]
-
         .drop_duplicates("PID")
     )
 
@@ -3944,7 +4260,7 @@ if "Žanr" in master.columns:
         errors="ignore"
     )
 
-    # lisab žanrid tabelisse
+    # lisab žanri tabelisse
     df_table = df_table.merge(
         genres,
         on="PID",
@@ -3953,17 +4269,13 @@ if "Žanr" in master.columns:
 
 # FAILINIME LISAMINE
 
-# kontrollib,
-# kas failinime veerg eksisteerib
 if "failinimi" in master.columns:
 
-    # võtab unikaalsed failinimed PID järgi
+    # võtab failinimed master tabelist
     filenames = (
-
         master[
             ["PID", "failinimi"]
         ]
-
         .drop_duplicates("PID")
     )
 
@@ -3982,15 +4294,12 @@ if "failinimi" in master.columns:
 
 # ISIKUTE LISAMINE
 
-# kontrollib,
-# kas people_df ei ole tühi
-# ja vajalik veerg eksisteerib
 if (
     not people_df.empty
     and "Isik" in people_df.columns
 ):
 
-    # koondab kõik isikud ühe PID kohta
+    # koondab kõik fotol olevad isikud ühe PID alla
     people_table = (
 
         people_df[
@@ -4004,8 +4313,7 @@ if (
         .groupby("PID")["Isik"]
 
         .apply(
-            lambda x:
-            ", ".join(
+            lambda x: ", ".join(
                 sorted(set(x.astype(str)))
             )
         )
@@ -4019,7 +4327,7 @@ if (
         )
     )
 
-    # eemaldab vana isikuveeru
+    # eemaldab vana isiku veeru
     df_table = df_table.drop(
         columns=["Isik pildil"],
         errors="ignore"
@@ -4034,14 +4342,12 @@ if (
 
 # ERA MÄRKSÕNADE LISAMINE
 
-# kontrollib,
-# kas märksõnade tabel ei ole tühi
 if (
     not marksoned.empty
     and "Märksõna" in marksoned.columns
 ):
 
-    # koondab kõik märksõnad ühe PID kohta
+    # koondab kõik märksõnad ühe PID alla
     keywords_table = (
 
         marksoned[
@@ -4055,8 +4361,7 @@ if (
         .groupby("PID")["Märksõna"]
 
         .apply(
-            lambda x:
-            ", ".join(
+            lambda x: ", ".join(
                 sorted(set(x.astype(str)))
             )
         )
@@ -4085,14 +4390,12 @@ if (
 
 # MÄRKSÕNA KATEGOORIATE LISAMINE
 
-# kontrollib,
-# kas kategooriate tabel ei ole tühi
 if (
     not marksona_kategooriad.empty
     and "Kategooria" in marksona_kategooriad.columns
 ):
 
-    # koondab kõik kategooriad ühe PID kohta
+    # koondab kategooriad ühe PID alla
     categories_table = (
 
         marksona_kategooriad[
@@ -4106,8 +4409,7 @@ if (
         .groupby("PID")["Kategooria"]
 
         .apply(
-            lambda x:
-            ", ".join(
+            lambda x: ", ".join(
                 sorted(set(x.astype(str)))
             )
         )
@@ -4134,10 +4436,10 @@ if (
         how="left"
     )
 
-# ANDMETABELI TAB
 with tab6:
 
-    # TABI PEALKIRI JA KIRJELDUS
+    # ANDMETABEL
+
     st.subheader("Andmetabel")
 
     st.caption(
@@ -4145,7 +4447,7 @@ with tab6:
         "otsida ja eksportida CSV-formaadis."
     )
 
-    # VEERGUDE NIMEDE VASTAVUS
+    # määrab tabelis kuvatavate veergude vastavused
     column_mapping = {
 
       "PID": "PID",
@@ -4177,7 +4479,7 @@ with tab6:
       "Longitude": "Longitude",
     }
 
-    # VALIB AINULT OLEMASOLEVAD VEERUD
+    # jätab alles ainult olemasolevad veerud
     available_columns = {
 
         label: real_col
@@ -4187,7 +4489,7 @@ with tab6:
         if real_col in df_table.columns
     }
 
-    # VEERGUDE VALIK KASUTAJALE
+    # võimaldab kasutajal valida kuvatavad veerud
     selected_labels = st.multiselect(
 
         "Vali kuvatavad veerud",
@@ -4197,7 +4499,7 @@ with tab6:
         default=list(available_columns.keys()),
     )
 
-    # TEISENDAB KUVATAVAD NIMED PÄRIS VEERUNIMEDEKS
+    # teisendab valitud nimed päris veerunimedeks
     selected_columns = [
 
         available_columns[label]
@@ -4205,15 +4507,15 @@ with tab6:
         for label in selected_labels
     ]
 
-    # OTSINGUVÄLI
+    # otsinguväli tabeli filtreerimiseks
     search_query = st.text_input(
         " Otsi (kirjeldus, kihelkond, fotograaf, märksõna)"
     )
 
-    # KOPEERIB ANDMETABELI
+    # teeb tabelist koopia
     table_df = df_table.copy()
 
-    # FILTREERIB OTSINGU JÄRGI
+    # filtreerib tabeli otsingu järgi
     if search_query:
 
         mask = pd.Series(
@@ -4221,8 +4523,7 @@ with tab6:
             index=table_df.index
         )
 
-        # VEERUD,
-        # KUS OTSING TOIMUB
+        # veerud, kus otsing toimub
         searchable_columns = [
 
             "Sisu kirjeldus",
@@ -4242,7 +4543,7 @@ with tab6:
             "pred_top1",
         ]
 
-        # OTSIB TEKSTI KÕIKIDEST VALITUD VEERGUDEST
+        # otsib sisestatud teksti kõikidest valitud veergudest
         for col in searchable_columns:
 
             if col in table_df.columns:
@@ -4252,15 +4553,16 @@ with tab6:
                     search_query
                 )
 
+        # jätab alles ainult sobivad read
         table_df = table_df[mask]
 
-    # LOOB KUVATAVA TABELI
+    # loob kuvatava tabeli
     display_df = table_df[selected_columns].copy()
 
-    # MUUDAB VEERUNIMED KASUTAJALE LOETAVAKS
+    # muudab veerunimed kasutajasõbralikumaks
     display_df.columns = selected_labels
 
-    # ASENDAB TÜHJAD VÄÄRTUSED
+    # asendab puuduvad väärtused kriipsuga
     display_df = display_df.fillna("—")
 
     display_df = display_df.replace(
@@ -4268,12 +4570,12 @@ with tab6:
         "—"
     )
 
-    # KUVATAVATE RIDADE ARV
+    # kuvab tabelis olevate ridade arvu
     st.markdown(
         f"Näidatakse **{len(display_df):,}** rida"
     )
 
-    # KUVAB TABELI
+    # kuvab andmetabeli
     st.dataframe(
 
         display_df.head(500),
@@ -4285,8 +4587,7 @@ with tab6:
         height=550,
     )
 
-    # TEAVITUS,
-    # KUI RIDU ON ROHKEM KUI 500
+    # kuvab hoiatuse, kui ridu on rohkem kui 500
     if len(display_df) > 500:
 
         st.caption(
@@ -4296,12 +4597,12 @@ with tab6:
 
     # CSV ALLALAADIMINE
 
-    # TEISENDAB TABELI CSV FORMAATI
+    # teisendab tabeli CSV formaati
     csv = display_df.to_csv(
         index=False
     ).encode("utf-8")
 
-    # ALLALAADIMISE NUPP
+    # nupp CSV faili allalaadimiseks
     st.download_button(
 
         label="Laadi filtreeritud andmestik alla (CSV)",
@@ -4317,15 +4618,16 @@ with tab6:
         "Alla laaditakse hetkel filtrite ja otsinguga kuvatud andmestik."
     )
 
-    # ANDMETE KVALITEEDI ANALÜÜS
+    # ANDMETE KVALITEET
+
     st.markdown("---")
 
     st.subheader("Andmete kvaliteet")
 
-    # KÕIKIDE FOTODE ARV
+    # kõikide fotode arv
     total = len(df)
 
-    # KOORDINAATIDEGA FOTOD
+    # leiab koordinaatidega fotod
     with_coords = len(
 
         df[
@@ -4335,7 +4637,7 @@ with tab6:
         ]
     )
 
-    # KPI KAARDID
+    # KPI kaardid
     col1, col2, col3 = st.columns(3)
 
     col1.metric(
@@ -4353,7 +4655,7 @@ with tab6:
         f"{total - with_coords:,}"
     )
 
-    # KOORDINAATIDE PROTSENT
+    # arvutab koordinaatidega fotode protsendi
     percent = round(
         (with_coords / total) * 100,
         1
@@ -4363,7 +4665,7 @@ with tab6:
         f"Kaardil kuvatakse **{percent}%** kõikidest fotodest."
     )
 
-    # ANDMETE KVALITEEDI HINNANG
+    # hindab andmestiku kvaliteeti
     if percent < 50:
 
         st.warning(
@@ -4381,7 +4683,8 @@ with tab6:
         "ruumilist ja kaardipõhist analüüsi."
     )
 
-    # PUUDUVATE ANDMETE ANALÜÜS
+    # PUUDUVAD ANDMED
+
     st.markdown("---")
 
     st.subheader("Puuduvad andmed")
@@ -4390,7 +4693,7 @@ with tab6:
         "Tabel näitab, millistes veergudes esineb kõige rohkem puuduvaid väärtusi."
     )
 
-    # LOEB PUUDUVAD VÄÄRTUSED
+    # arvutab puuduvate väärtuste arvu
     missing = df.isnull().sum().reset_index()
 
     missing.columns = [
@@ -4398,19 +4701,18 @@ with tab6:
         "Puuduvaid väärtusi"
     ]
 
-    # JÄTAB ALLES AINULT VEERUD,
-    # KUS ON PUUDUVAID VÄÄRTUSI
+    # jätab alles ainult puuduvate väärtustega veerud
     missing = missing[
         missing["Puuduvaid väärtusi"] > 0
     ]
 
-    # SORTEERIB SUURIMA PUUDUVATE VÄÄRTUSTE ARVU JÄRGI
+    # sorteerib tabeli puuduvate väärtuste arvu järgi
     missing = missing.sort_values(
         "Puuduvaid väärtusi",
         ascending=False
     )
 
-    # KUVAB PUUDUVATE ANDMETE TABELI
+    # kuvab puuduvate andmete tabeli
     st.dataframe(
 
       missing,
@@ -4422,8 +4724,8 @@ with tab6:
       height=350
     )
 
-
 # LEHE LÕPUINFO
+
 st.markdown("---")
 
 st.caption(
