@@ -3861,6 +3861,279 @@ with tab5:
                 f"{eval_df['top5_match'].mean() * 100:.1f}%"
             )
 
+# ANDMETABELI LISAVEERUD
+
+# teeb põhiandmestikust koopia tabelivaate jaoks
+df_table = df.copy()
+
+# puhastab PID väärtused
+df_table["PID"] = (
+    df_table["PID"]
+    .astype(str)
+    .str.strip()
+)
+
+# FOTOGRAAFIDE LISAMINE
+
+# kontrollib,
+# kas master tabelis on fotograafi veerg olemas
+if "Fotograaf (puhastatud)" in master.columns:
+
+    # koondab kõik fotograafid ühe PID kohta
+    photographers = (
+
+        master[
+            ["PID", "Fotograaf (puhastatud)"]
+        ]
+
+        .dropna()
+
+        .drop_duplicates()
+
+        .groupby("PID")["Fotograaf (puhastatud)"]
+
+        .apply(
+            lambda x:
+            ", ".join(
+                sorted(set(x.astype(str)))
+            )
+        )
+
+        .reset_index()
+
+        .rename(
+            columns={
+                "Fotograaf (puhastatud)": "Fotograaf"
+            }
+        )
+    )
+
+    # eemaldab vana veeru,
+    # et merge ei tekitaks duplikaate
+    df_table = df_table.drop(
+        columns=["Fotograaf"],
+        errors="ignore"
+    )
+
+    # lisab fotograafid põhiandmestikule
+    df_table = df_table.merge(
+        photographers,
+        on="PID",
+        how="left"
+    )
+
+# ŽANRI LISAMINE
+
+# kontrollib,
+# kas žanri veerg on olemas
+if "Žanr" in master.columns:
+
+    # võtab unikaalsed žanrid PID järgi
+    genres = (
+
+        master[
+            ["PID", "Žanr"]
+        ]
+
+        .drop_duplicates("PID")
+    )
+
+    # eemaldab vana žanri veeru
+    df_table = df_table.drop(
+        columns=["Žanr"],
+        errors="ignore"
+    )
+
+    # lisab žanrid tabelisse
+    df_table = df_table.merge(
+        genres,
+        on="PID",
+        how="left"
+    )
+
+# FAILINIME LISAMINE
+
+# kontrollib,
+# kas failinime veerg eksisteerib
+if "failinimi" in master.columns:
+
+    # võtab unikaalsed failinimed PID järgi
+    filenames = (
+
+        master[
+            ["PID", "failinimi"]
+        ]
+
+        .drop_duplicates("PID")
+    )
+
+    # eemaldab vana failinime veeru
+    df_table = df_table.drop(
+        columns=["failinimi"],
+        errors="ignore"
+    )
+
+    # lisab failinimed tabelisse
+    df_table = df_table.merge(
+        filenames,
+        on="PID",
+        how="left"
+    )
+
+# ISIKUTE LISAMINE
+
+# kontrollib,
+# kas people_df ei ole tühi
+# ja vajalik veerg eksisteerib
+if (
+    not people_df.empty
+    and "Isik" in people_df.columns
+):
+
+    # koondab kõik isikud ühe PID kohta
+    people_table = (
+
+        people_df[
+            ["PID", "Isik"]
+        ]
+
+        .dropna()
+
+        .drop_duplicates()
+
+        .groupby("PID")["Isik"]
+
+        .apply(
+            lambda x:
+            ", ".join(
+                sorted(set(x.astype(str)))
+            )
+        )
+
+        .reset_index()
+
+        .rename(
+            columns={
+                "Isik": "Isik pildil"
+            }
+        )
+    )
+
+    # eemaldab vana isikuveeru
+    df_table = df_table.drop(
+        columns=["Isik pildil"],
+        errors="ignore"
+    )
+
+    # lisab isikud tabelisse
+    df_table = df_table.merge(
+        people_table,
+        on="PID",
+        how="left"
+    )
+
+# ERA MÄRKSÕNADE LISAMINE
+
+# kontrollib,
+# kas märksõnade tabel ei ole tühi
+if (
+    not marksoned.empty
+    and "Märksõna" in marksoned.columns
+):
+
+    # koondab kõik märksõnad ühe PID kohta
+    keywords_table = (
+
+        marksoned[
+            ["PID", "Märksõna"]
+        ]
+
+        .dropna()
+
+        .drop_duplicates()
+
+        .groupby("PID")["Märksõna"]
+
+        .apply(
+            lambda x:
+            ", ".join(
+                sorted(set(x.astype(str)))
+            )
+        )
+
+        .reset_index()
+
+        .rename(
+            columns={
+                "Märksõna": "ERA märksõnad"
+            }
+        )
+    )
+
+    # eemaldab vana märksõnade veeru
+    df_table = df_table.drop(
+        columns=["ERA märksõnad"],
+        errors="ignore"
+    )
+
+    # lisab märksõnad tabelisse
+    df_table = df_table.merge(
+        keywords_table,
+        on="PID",
+        how="left"
+    )
+
+# MÄRKSÕNA KATEGOORIATE LISAMINE
+
+# kontrollib,
+# kas kategooriate tabel ei ole tühi
+if (
+    not marksona_kategooriad.empty
+    and "Kategooria" in marksona_kategooriad.columns
+):
+
+    # koondab kõik kategooriad ühe PID kohta
+    categories_table = (
+
+        marksona_kategooriad[
+            ["PID", "Kategooria"]
+        ]
+
+        .dropna()
+
+        .drop_duplicates()
+
+        .groupby("PID")["Kategooria"]
+
+        .apply(
+            lambda x:
+            ", ".join(
+                sorted(set(x.astype(str)))
+            )
+        )
+
+        .reset_index()
+
+        .rename(
+            columns={
+                "Kategooria": "Märksõna kategooria"
+            }
+        )
+    )
+
+    # eemaldab vana kategooria veeru
+    df_table = df_table.drop(
+        columns=["Märksõna kategooria"],
+        errors="ignore"
+    )
+
+    # lisab kategooriad tabelisse
+    df_table = df_table.merge(
+        categories_table,
+        on="PID",
+        how="left"
+    )
+
 # ANDMETABELI TAB
 with tab6:
 
