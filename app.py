@@ -62,6 +62,8 @@ df = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_koordinaatidega")
 
 df.columns = df.columns.str.strip()
 
+st.write(df.columns.tolist())
+
 master = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="fotod_master")
 
 master.columns = master.columns.str.strip()
@@ -274,15 +276,14 @@ with tab1:
 
     # ASUKOHT SIDEBAR
     selected_places = st.sidebar.multiselect(
-        "Täpne asukoht",
-        sorted(df["Koht täpsemalt"].dropna().unique()),
+        "Asula",
+        sorted(df["asula"].dropna().astype(str).unique()),
         key="asukoht_filter",
     )
 
     if selected_places:
-        df = df[df["Koht täpsemalt"].isin(selected_places)]
+        df = df[df["asula"].isin(selected_places)] #### KUJUTATUD ANDMED ###
 
-        #### KUJUTATUD ANDMED ###
     # FOTOGRAAF SIDEBAR
 
     filtered_pids = df["PID"].astype(str).str.strip().unique()
