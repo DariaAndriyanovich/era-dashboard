@@ -1103,6 +1103,15 @@ with tab2:
         for x in centroids.keys()
     }
 
+    geo_names.update({
+        "Kihnu",
+        "Tartu",
+        "Setumaa",
+        "Petserimaa",
+        "Pärnu",
+        "Valga"
+    })
+
     # SESSION STATE
     if "kaart_vaade" not in st.session_state:
         st.session_state["kaart_vaade"] = "overview"
@@ -1150,6 +1159,19 @@ with tab2:
                 .str.strip()
             )
 
+            src["kaardi_piirkond"] = (
+                src["kaardi_piirkond"]
+                .replace({
+                    "Tartu linn": "Tartu",
+                    "Tallinna linn": "Tallinn",
+                    "Petseri": "Petserimaa"
+                })
+            )
+
+            src = src[
+                ~src["kaardi_piirkond"]
+                .str.match(r"^-?\d+(\.\d+)?$", na=False)
+            ]
             # FOTODE ARV PIIRKONNA KOHTA
             counts = (
                 src
@@ -1233,6 +1255,73 @@ with tab2:
                     width=0.8
                 )
 
+                # ERALDI PUNKTID PUUDUVATELE PIIRKONDADELE
+
+                special_coords = {
+
+                    "Kihnu": (58.138, 24.024),
+
+                    "Tartu": (58.378, 26.729),
+
+                    "Setumaa": (57.95, 27.55),
+
+                    "Petserimaa": (57.80, 27.55),
+
+                    "Pärnu": (58.385, 24.497),
+
+                    "Valga": (57.777, 26.047)
+                }
+
+                special_regions = (
+                    src[
+                        src["kaardi_piirkond"]
+                        .isin(special_coords.keys())
+                    ]
+                    .groupby("kaardi_piirkond")
+                    .size()
+                    .reset_index(name="Fotode arv")
+                )
+
+                special_regions["lat"] = (
+                    special_regions["kaardi_piirkond"]
+                    .map(lambda x: special_coords[x][0])
+                )
+
+                special_regions["lon"] = (
+                    special_regions["kaardi_piirkond"]
+                    .map(lambda x: special_coords[x][1])
+                )
+
+                fig.add_trace(
+                    go.Scattermapbox(
+
+                        lat=special_regions["lat"],
+                        lon=special_regions["lon"],
+
+                        mode="markers+text",
+
+                        marker=dict(
+                            size=35,
+                            color="rgba(0,128,128,0.5)"
+                        ),
+
+                        text=special_regions["kaardi_piirkond"],
+                        textposition="top center",
+
+                        customdata=[
+                            [row["kaardi_piirkond"], row["Fotode arv"]]
+                            for _, row in special_regions.iterrows()
+                        ],
+
+                        hovertemplate=
+                            "kaardi_piirkond=%{customdata[0]}<br>"
+                            "Fotode arv=%{customdata[1]}"
+                            "<extra></extra>",
+
+                        name="Eraldi kuvatud piirkonnad"
+                    )
+                )
+
                 fig.update_layout(
 
                     height=700,
@@ -1314,9 +1403,22 @@ with tab2:
 
         st.subheader(f" {val}")
 
+        detail_df = df.copy()
+
+        detail_df["kaardi_piirkond"] = (
+            detail_df["kaardi_piirkond"]
+            .astype(str)
+            .str.strip()
+            .replace({
+                "Tartu linn": "Tartu",
+                "Tallinna linn": "Tallinn",
+                "Petseri": "Petserimaa"
+            })
+        )
+
         # FILTER
-        det = df[
-            df["kaardi_piirkond"]
+        det = detail_df[
+            detail_df["kaardi_piirkond"]
             .astype(str)
             .str.strip()
             == val
@@ -1578,10 +1680,27 @@ with tab2:
           ]
 
           ft = (
-              clean_series(det_photographers["Fotograaf"])
-              .value_counts()
+
+              det_photographers
+
+              .dropna(subset=["Fotograaf", "PID"])
+
+              .assign(
+                  Fotograaf=lambda x:
+                  x["Fotograaf"]
+                  .astype(str)
+                  .str.strip()
+              )
+
+              .groupby("Fotograaf")["PID"]
+
+              .nunique()
+
+              .sort_values(ascending=False)
+
               .head(8)
-              .reset_index()
+
+              .reset_index(name="Arv")
           )
 
           ft.columns = [
