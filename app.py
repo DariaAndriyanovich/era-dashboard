@@ -88,6 +88,32 @@ ml_data = ml_data.rename(columns={
 
 ml_raw = ml_data.copy()
 
+ml_raw = ml_data.copy()
+
+# CLIP METRICS
+try:
+
+    ml_metrics = pd.read_excel(
+        "era_clip_KOIK_pildid_sigmoid.xlsx",
+        sheet_name="cluster_metrics"
+    )
+
+    ml_metrics.columns = (
+        ml_metrics.columns
+        .astype(str)
+        .str.strip()
+    )
+
+except Exception:
+
+    ml_metrics = pd.DataFrame()
+
+ml_data.columns = (
+    ml_data.columns
+    .astype(str)
+    .str.strip()
+)
+
 ml_data["PID"] = (
     ml_data["PID"]
     .astype(str)
@@ -2979,7 +3005,7 @@ with tab5:
 
     if not ml_metrics.empty:
 
-        st.subheader("📊 CLIP mudeli kvaliteet kategooriate kaupa")
+        st.subheader(" CLIP mudeli kvaliteet kategooriate kaupa")
 
         st.markdown("""
     See graafik näitab, milliste märksõnakategooriate puhul töötab CLIP mudel paremini.
