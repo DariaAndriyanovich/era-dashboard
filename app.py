@@ -1343,15 +1343,33 @@ with tab2:
             else "?"
         )
 
+        # FOTOGRAAFIDE ARV
+
+        det_pids = (
+            det["PID"]
+            .astype(str)
+            .str.strip()
+            .unique()
+        )
+
+        det_photographers = people_df[
+            people_df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(det_pids)
+        ]
+
+        photographer_count = (
+            det_photographers["Fotograaf"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .nunique()
+        )
+
         k4.metric(
             "Fotograafe",
-
-            clean_series(
-                det["Fotograaf"]
-            ).nunique()
-
-            if "Fotograaf" in det.columns
-            else "?"
+            photographer_count
         )
 
         # KOORDINAATIDEGA FOTOD
@@ -1530,29 +1548,41 @@ with tab2:
         # FOTOGRAAFID
         with col1:
 
-            if "Fotograaf" in det.columns:
+          det_pids = (
+              det["PID"]
+              .astype(str)
+              .str.strip()
+              .unique()
+          )
 
-                ft = (
-                    clean_series(det["Fotograaf"])
-                    .value_counts()
-                    .head(8)
-                    .reset_index()
-                )
+          det_photographers = people_df[
+              people_df["PID"]
+              .astype(str)
+              .str.strip()
+              .isin(det_pids)
+          ]
 
-                ft.columns = [
-                    "Fotograaf",
-                    "Arv"
-                ]
+          ft = (
+              clean_series(det_photographers["Fotograaf"])
+              .value_counts()
+              .head(8)
+              .reset_index()
+          )
 
-                if not ft.empty:
+          ft.columns = [
+              "Fotograaf",
+              "Arv"
+          ]
 
-                    st.markdown("### Fotograafid")
+          if not ft.empty:
 
-                    st.dataframe(
-                        ft,
-                        hide_index=True,
-                        use_container_width=True
-                    )
+              st.markdown("### Fotograafid")
+
+              st.dataframe(
+                  ft,
+                  hide_index=True,
+                  use_container_width=True
+              )
 
         # MÄRKSÕNAD
         with col2:
@@ -2356,26 +2386,25 @@ with tab4:
 
             # OPTIONS
 
-            net.set_options("""
-            {
-              "layout": {
-                "improvedLayout": true
-              },
+            net.options = {
+                "layout": {
+                  "improvedLayout": True
+                },
 
               "nodes": {
-                "font": {
-                "size": 6
-                }
+                  "font": {
+                      "size": 6
+                  }
               },
 
               "edges": {
-                "smooth": false
+                "smooth": False
               },
 
               "physics": {
-                "enabled": true,
+                "enabled": True,
                 "stabilization": {
-                  "enabled": true,
+                  "enabled": True,
                   "iterations": 150
                   },
 
@@ -2389,14 +2418,13 @@ with tab4:
               },
 
               "interaction": {
-                  "hover": true,
-                  "navigationButtons": true,
-                  "keyboard": true,
-                  "hoverConnectedEdges": true,
-                  "selectConnectedEdges": true
+                  "hover": True,
+                  "navigationButtons": True,
+                  "keyboard": True,
+                  "hoverConnectedEdges": True,
+                  "selectConnectedEdges":True
               }
             }
-            """)
 
             html = net.generate_html()
 
