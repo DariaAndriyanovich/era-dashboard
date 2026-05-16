@@ -713,7 +713,7 @@ with tab1:
         return options
 
 
-        # MÄRKSÕNADE FILTREERIMINE
+    # MÄRKSÕNADE FILTREERIMINE
 
     # funktsioon fotode filtreerimiseks märksõnade järgi
     def filter_by_marksonad(
@@ -795,7 +795,7 @@ with tab1:
         # tagastatakse filtreeritud dataframe
         return filtered_df
 
-        # MÄRKSÕNADE SIDEBAR
+    # MÄRKSÕNADE SIDEBAR
 
     # märksõnade filtri pealkiri sidebaris
     st.sidebar.markdown("## Märksõnad")
@@ -805,90 +805,171 @@ with tab1:
 
     # märksõnade kategooriate tabeli laadimine
     marksona_kategooriad = load_marksona_kategooriad()
-    
+
     # KATEGOORIA FILTER
-    filtered_pids = set(df["PID"].dropna().astype(str).unique())
 
-    filtered_categories_df = marksona_kategooriad[
-        marksona_kategooriad["PID"].astype(str).isin(filtered_pids)
-    ]
-
-    all_categories = sorted(
-        filtered_categories_df["Kategooria"].dropna().astype(str).unique()
+    # hetkel filtreeritud PID väärtuste kogumine
+    filtered_pids = set(
+        df["PID"]
+        .dropna()
+        .astype(str)
+        .unique()
     )
 
-    selected_categories = st.sidebar.multiselect("Märksõna kategooria", all_categories)
+    # ainult aktiivsete fotodega seotud kategooriad
+    filtered_categories_df = marksona_kategooriad[
+        marksona_kategooriad["PID"]
+        .astype(str)
+        .isin(filtered_pids)
+    ]
 
-    # MÄRKSÕNA VALIKUD
+    # kõik unikaalsed märksõna kategooriad
+    all_categories = sorted(
+        filtered_categories_df["Kategooria"]
+        .dropna()
+        .astype(str)
+        .unique()
+    )
 
-    marksona_options = get_marksona_options(marksoned, current_df=df)
+    # kategooriate valik sidebaris
+    selected_categories = st.sidebar.multiselect(
+        "Märksõna kategooria",
+        all_categories
+    )
 
+        # MÄRKSÕNA VALIKUD
+
+    # märksõnade valikute loomine aktiivsete filtrite põhjal
+    marksona_options = get_marksona_options(
+        marksoned,
+        current_df=df
+    )
+
+    # kui kategooriad on valitud
     if selected_categories:
 
+        # leitakse kõik märksõnad,
+        # mis kuuluvad valitud kategooriatesse
         allowed_keywords = (
+
             marksona_kategooriad[
-                marksona_kategooriad["Kategooria"].isin(selected_categories)
+                marksona_kategooriad["Kategooria"]
+                .isin(selected_categories)
             ]["Märksõna"]
+
             .dropna()
             .astype(str)
             .unique()
         )
 
-        marksona_options = [x for x in marksona_options if x in allowed_keywords]
+        # jäetakse alles ainult sobivad märksõnad
+        marksona_options = [
+            x for x in marksona_options
+            if x in allowed_keywords
+        ]
 
+        # leitakse kõik PID-id,
+        # mis sisaldavad valitud kategooriaid
         matched_pids = (
+
             marksona_kategooriad[
-                marksona_kategooriad["Kategooria"].isin(selected_categories)
+                marksona_kategooriad["Kategooria"]
+                .isin(selected_categories)
             ]["PID"]
+
             .dropna()
             .astype(str)
             .str.strip()
             .unique()
         )
 
-        df = df[df["PID"].astype(str).str.strip().isin(matched_pids)]
+        # filtreeritakse andmestik valitud kategooriate järgi
+        df = df[
+            df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(matched_pids)
+        ]
 
     # MÄRKSÕNA FILTER
 
+    # märksõnade valik sidebaris
     selected_marksonad = st.sidebar.multiselect(
         "Vali märksõnad",
+
+        # võimalikud märksõnade valikud
         options=marksona_options,
+
+        # maksimaalselt 5 märksõna
         max_selections=5,
+
         placeholder="Vali märksõnad",
     )
 
+    # kui valitud on rohkem kui üks märksõna
     if len(selected_marksonad) > 1:
 
+        # kasutaja saab valida OR või AND loogika
         marksona_logic = st.sidebar.radio(
-            "Märksõnade loogika", options=["OR", "AND"], horizontal=True
+            "Märksõnade loogika",
+            options=["OR", "AND"],
+            horizontal=True
         )
 
     else:
+
+        # ühe märksõna puhul kasutatakse automaatselt OR loogikat
         marksona_logic = "OR"
 
+    # andmete filtreerimine märksõnade järgi
     df = filter_by_marksonad(
+
         fotod_df=df,
+
         marksoned_df=marksoned,
+
         selected_marksonad=selected_marksonad,
+
         logic=marksona_logic,
     )
 
     # KPI CARDS
+
+    # dashboardi põhinäitajate loomine
     cards = [
+
+        # fotode koguarv
         ("Fotode arv", f"{len(df):,}"),
+
+        # unikaalsete kihelkondade arv
         ("Kihelkondi", df["Kihelkond"].nunique()),
+
+        # unikaalsete asukohtade arv
         ("Asukohti", df["Koht täpsemalt"].nunique()),
+
+        # andmestiku ajavahemik
         (
             "Ajavahemik",
+
             (
-                f"{int(df['Aasta'].dropna().min())}–{int(df['Aasta'].dropna().max())}"
+                f"{int(df['Aasta'].dropna().min())}"
+                f"–"
+                f"{int(df['Aasta'].dropna().max())}"
+
                 if not df["Aasta"].dropna().empty
+
                 else "Puudub"
             ),
         ),
-        ("Koordinaatidega", f"{df['koordinaadid_leitud'].sum():,}"),
+
+        # koordinaatidega fotode arv
+        (
+            "Koordinaatidega",
+            f"{df['koordinaadid_leitud'].sum():,}"
+        ),
     ]
 
+    # KPI kaartide HTML konteiner
     cards_html = """
     <div style="
         display:flex;
@@ -898,6 +979,7 @@ with tab1:
     ">
     """
 
+    # iga KPI kaardi loomine
     for label, value in cards:
 
         cards_html += f"""
@@ -919,6 +1001,7 @@ with tab1:
             ">
             </div>
 
+            <!-- KPI nimetus -->
             <div style="
                 font-family: Inter, sans-serif;
                 font-size:14px;
@@ -928,6 +1011,7 @@ with tab1:
                 {label}
             </div>
 
+            <!-- KPI väärtus -->
             <div style="
                 font-family: Inter, sans-serif;
                 font-size:25px;
@@ -940,169 +1024,365 @@ with tab1:
         </div>
         """
 
+    # HTML konteineri sulgemine
     cards_html += "</div>"
 
-    components.html(cards_html, height=200, scrolling=False)
+    # KPI kaartide kuvamine Streamlitis
+    components.html(
+        cards_html,
+        height=200,
+        scrolling=False
+    )
 
+    # eraldusjoon
     st.markdown("---")
 
-    # FOTODE JAOTUS AJAS
+        # FOTODE JAOTUS AJAS
+
+    # sektsiooni pealkiri
     st.markdown("### Fotode jaotus aastate lõikes")
-    st.caption("Graafik näitab, kuidas fotode arv muutus aastate jooksul.")
 
-    photos_by_year = df.groupby("Aasta").size().reset_index(name="Fotode arv")
-
-    fig = px.area(photos_by_year, x="Aasta", y="Fotode arv", line_shape="spline")
-
-    fig.update_traces(
-        line=dict(color="#5B8FF9", width=3), fillcolor="rgba(91,143,249,0.18)"
+    # sektsiooni kirjeldus
+    st.caption(
+        "Graafik näitab, kuidas fotode arv muutus aastate jooksul."
     )
 
-    fig.update_layout(
-        height=520,
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        margin=dict(l=20, r=20, t=20, b=20),
-        xaxis=dict(title="Aasta", showgrid=False, zeroline=False),
-        yaxis=dict(title="Fotode arv", gridcolor="rgba(0,0,0,0.06)", zeroline=False),
-        hovermode="x unified",
-    )
-
-    with st.container():
-        st.plotly_chart(fig, use_container_width=True)
-
-    # KIHELKONNAD AJAS
-
-    st.markdown("### Kihelkonnad ajas")
-    st.caption("Fotode arvu muutus ajas valitud kihelkondades.")
-
-    all_kih = sorted(
-        df["Kihelkond"]
-        .dropna()
-        .astype(str)
-        .unique()
-    )
-
-    top_kih = (
-        df["Kihelkond"]
-        .value_counts()
-        .head(4)
-        .index
-        .tolist()
-    )
-
-    selected_kih = st.multiselect(
-        "Vali kuni 4 kihelkonda",
-        all_kih,
-        default=top_kih,
-        max_selections=4,
-    )
-
-    if selected_kih:
-
-        timeline_df = (
-            df[df["Kihelkond"].isin(selected_kih)]
-            .groupby(["Aasta", "Kihelkond"])
-            .size()
-            .reset_index(name="Fotode arv")
-        )
-
-        fig_timeline = px.line(
-            timeline_df,
-            x="Aasta",
-            y="Fotode arv",
-            color="Kihelkond",
-            line_shape="spline",
-            color_discrete_sequence=px.colors.qualitative.Set2,
-        )
-
-        fig_timeline.update_traces(
-            line=dict(width=2),
-        )
-
-        fig_timeline.update_layout(
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            height=500,
-            margin=dict(l=20, r=20, t=30, b=20),
-            hovermode="x unified",
-            showlegend=True,
-        )
-
-    st.plotly_chart(
-        fig_timeline,
-        use_container_width=True
-    )
-
-    # KÕIGE SAGEDASEMAD ASUKOHAD
-
-    st.markdown("### Kõige sagedasemad asukohad")
-    st.caption("Top 10 kõige sagedamini esinevat täpset asukohta.")
-
-    top_places = (
-        df["Koht täpsemalt"]
-        .dropna()
-        .value_counts()
-        .head(10)
+    # fotode grupeerimine aastate järgi
+    photos_by_year = (
+        df
+        .groupby("Aasta")
+        .size()
         .reset_index(name="Fotode arv")
     )
 
-    fig_places = px.bar(
-        top_places,
-        x="Koht täpsemalt",
+    # pinddiagrammi loomine
+    fig = px.area(
+
+        photos_by_year,
+
+        x="Aasta",
+
         y="Fotode arv",
+
+        # sujuv joon
+        line_shape="spline"
+    )
+
+    # joone ja täitevärvi kujundus
+    fig.update_traces(
+
+        line=dict(
+            color="#5B8FF9",
+            width=3
+        ),
+
+        fillcolor="rgba(91,143,249,0.18)"
+    )
+
+    # graafiku üldine kujundus
+    fig.update_layout(
+
+        height=520,
+
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+
+        margin=dict(
+            l=20,
+            r=20,
+            t=20,
+            b=20
+        ),
+
+        # x-telje seadistused
+        xaxis=dict(
+            title="Aasta",
+            showgrid=False,
+            zeroline=False
+        ),
+
+        # y-telje seadistused
+        yaxis=dict(
+            title="Fotode arv",
+            gridcolor="rgba(0,0,0,0.06)",
+            zeroline=False
+        ),
+
+        # ühine hover aastate lõikes
+        hovermode="x unified",
+    )
+
+    # graafiku kuvamine konteineris
+    with st.container():
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+    # KIHELKONDADE AJALINE ANALÜÜS
+
+    # sektsiooni pealkiri
+    st.markdown("### Kihelkonnad ajas")
+
+    # sektsiooni kirjeldus
+    st.caption(
+        "Fotode arvu muutus ajas valitud kihelkondades."
+    )
+
+    # kõik olemasolevad kihelkonnad valiku jaoks
+    all_kih = sorted(
+
+        df["Kihelkond"]
+
+        .dropna()
+
+        .astype(str)
+
+        .unique()
+    )
+
+    # vaikimisi kuvatavad top 4 kihelkonda
+    top_kih = (
+
+        df["Kihelkond"]
+
+        .value_counts()
+
+        .head(4)
+
+        .index
+
+        .tolist()
+    )
+
+    # kihelkondade valik kasutajale
+    selected_kih = st.multiselect(
+
+        "Vali kuni 4 kihelkonda",
+
+        all_kih,
+
+        default=top_kih,
+
+        max_selections=4,
+    )
+
+    # kontroll, kas vähemalt üks kihelkond on valitud
+    if selected_kih:
+
+        # andmete filtreerimine valitud kihelkondade järgi
+        timeline_df = (
+
+            df[
+                df["Kihelkond"].isin(selected_kih)
+            ]
+
+            .groupby([
+                "Aasta",
+                "Kihelkond"
+            ])
+
+            .size()
+
+            .reset_index(name="Fotode arv")
+        )
+
+        # joondiagrammi loomine
+        fig_timeline = px.line(
+
+            timeline_df,
+
+            x="Aasta",
+
+            y="Fotode arv",
+
+            color="Kihelkond",
+
+            # sujuvad jooned
+            line_shape="spline",
+
+            # värvipalett
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
+
+        # joonte kujundus
+        fig_timeline.update_traces(
+
+            line=dict(width=2),
+        )
+
+        # graafiku üldine kujundus
+        fig_timeline.update_layout(
+
+            paper_bgcolor="white",
+
+            plot_bgcolor="white",
+
+            height=500,
+
+            margin=dict(
+                l=20,
+                r=20,
+                t=30,
+                b=20
+            ),
+
+            # hover info kogu x-telje lõikes
+            hovermode="x unified",
+
+            # legendi kuvamine
+            showlegend=True,
+        )
+
+    # graafiku kuvamine
+    st.plotly_chart(
+
+        fig_timeline,
+
+        use_container_width=True
+    )
+
+        # KÕIGE SAGEDASEMATE ASUKOHTADE ANALÜÜS
+
+    # sektsiooni pealkiri
+    st.markdown("### Kõige sagedasemad asukohad")
+
+    # sektsiooni kirjeldus
+    st.caption(
+        "Top 10 kõige sagedamini esinevat täpset asukohta."
+    )
+
+    # top 10 kõige sagedasemat asukohta
+    top_places = (
+
+        df["Koht täpsemalt"]
+
+        .dropna()
+
+        .value_counts()
+
+        .head(10)
+
+        .reset_index(name="Fotode arv")
+    )
+
+    # tulpdiagrammi loomine
+    fig_places = px.bar(
+
+        top_places,
+
+        x="Koht täpsemalt",
+
+        y="Fotode arv",
+
+        # värv sõltub fotode arvust
         color="Fotode arv",
+
+        # värviskeem
         color_continuous_scale="Tealgrn",
     )
 
+    # graafiku üldine kujundus
     fig_places.update_layout(
+
         paper_bgcolor="white",
+
         plot_bgcolor="white",
+
         height=350,
-        margin=dict(l=20, r=20, t=30, b=20),
+
+        margin=dict(
+            l=20,
+            r=20,
+            t=30,
+            b=20
+        ),
+
+        # fondi suurus
         font=dict(size=14),
+
+        # peida värviskaala
         coloraxis_showscale=False,
     )
 
+    # tulpade ja hoveri kujundus
     fig_places.update_traces(
+
+        # eemaldab tulpade äärejooned
         marker_line_width=0,
-        hovertemplate="<b>%{x}</b><br>Fotode arv: %{y}<extra></extra>",
+
+        # hover info
+        hovertemplate=
+            "<b>%{x}</b><br>"
+            "Fotode arv: %{y}"
+            "<extra></extra>",
     )
 
-    st.plotly_chart(fig_places, use_container_width=True)
+    # graafiku kuvamine
+    st.plotly_chart(
+        fig_places,
+        use_container_width=True
+    )
 
-    # FOTODE JAOTUS PIIRKONDADE JÄRGI
+        # FOTODE JAOTUS PIIRKONDADE JÄRGI
+
+    # eraldusjoon sektsioonide vahel
     st.markdown("---")
+
+    # sektsiooni pealkiri
     st.subheader("Fotode jaotus piirkondade järgi")
 
+    # sektsiooni kirjeldus
     st.caption(
         "Diagramm näitab, millistes kihelkondades leidub kõige rohkem fotosid."
     )
 
+    # top 10 kõige sagedasemat kihelkonda
     region_counts = (
+
         df["Kihelkond"]
+
         .value_counts()
+
         .head(10)
+
         .reset_index()
     )
 
+    # veergude nimede ümbernimetamine
     region_counts.columns = [
         "Kihelkond",
         "Fotode arv"
     ]
 
+    # sorteerimine väiksemast suuremani
     region_counts = region_counts.sort_values(
+
         by="Fotode arv",
+
         ascending=True
     )
 
+    # horisontaalse tulpdiagrammi loomine
     fig_regions = px.bar(
+
         region_counts,
+
         x="Fotode arv",
+
         y="Kihelkond",
+
+        # horisontaalne diagramm
         orientation="h",
+
+        # tekst tulpade peale
         text="Fotode arv",
+
+        # värv sõltub fotode arvust
         color="Fotode arv",
+
+        # värviskeem
         color_continuous_scale=[
             "#D7EFE2",
             "#9AD7C3",
@@ -1111,21 +1391,36 @@ with tab1:
         ],
     )
 
+    # tulpade kujundus
     fig_regions.update_traces(
+
+        # tekst väljaspool tulpa
         textposition="outside",
+
+        # eemaldab tulpade äärejooned
         marker_line_width=0,
+
+        # hover info
         hovertemplate=(
+
             "<b>%{y}</b><br>"
-            "Fotode arv: %{x}<extra></extra>"
+
+            "Fotode arv: %{x}"
+
+            "<extra></extra>"
         ),
     )
 
+    # graafiku üldine kujundus
     fig_regions.update_layout(
+
         height=540,
 
         plot_bgcolor="white",
+
         paper_bgcolor="white",
 
+        # peida värviskaala
         coloraxis_showscale=False,
 
         margin=dict(
@@ -1135,27 +1430,43 @@ with tab1:
             b=20
         ),
 
+        # telgede pealkirjad
         xaxis_title="Fotode arv",
+
         yaxis_title="Kihelkond",
 
+        # fondi suurus
         font=dict(size=15),
 
+        # x-telje seadistused
         xaxis=dict(
+
             showgrid=True,
+
             gridcolor="rgba(0,0,0,0.06)",
+
             zeroline=False,
         ),
 
+        # y-telje seadistused
         yaxis=dict(
             showgrid=False,
         ),
     )
 
+    # graafiku kuvamine
     st.plotly_chart(
+
         fig_regions,
+
         use_container_width=True,
-        config={"displayModeBar": False}
+
+        # peida plotly tööriistariba
+        config={
+            "displayModeBar": False
+        }
     )
+
 # GEOJSONI LAADIMINE
 @st.cache_data
 def load_geojson(path):
