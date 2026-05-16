@@ -2197,67 +2197,127 @@ with tab2:
                 except Exception:
                     pass
 
+# MÄRKSÕNADE ANALÜÜSI TAB
 with tab3:
-    # MÄRKSÕNAD
+
+    # TABI PEALKIRI JA KIRJELDUS
     st.header("Fotokogu temaatiline analüüs")
-    st.caption("Ülevaade ERA fotoarhiivi märksõnadest ja kategooriatest.")
 
-    filtered_pids = df["PID"].astype(str).str.strip().unique()
+    st.caption(
+        "Ülevaade ERA fotoarhiivi märksõnadest ja kategooriatest."
+    )
 
-    keywords_series = (
-        marksoned[marksoned["PID"].isin(filtered_pids)]["Märksõna"]
-        .dropna()
+    # FILTREERITUD PID-DE VÕTMINE
+    filtered_pids = (
+        df["PID"]
         .astype(str)
+        .str.strip()
+        .unique()
+    )
+
+    # LAEB FILTREERITUD FOTODEGA SEOTUD MÄRKSÕNAD
+    keywords_series = (
+        marksoned[
+            marksoned["PID"].isin(filtered_pids)
+        ]["Märksõna"]
+
+        .dropna()
+
+        .astype(str)
+
         .str.strip()
     )
 
+    # FILTREERIB MÄRKSÕNAD VALITUD MÄRKSÕNADE JÄRGI
     if selected_marksonad:
 
-        keywords = keywords_series[keywords_series.isin(selected_marksonad)]
+        keywords = keywords_series[
+            keywords_series.isin(selected_marksonad)
+        ]
 
+    # FILTREERIB MÄRKSÕNAD VALITUD KATEGOORIATE JÄRGI
     elif selected_categories:
 
         allowed_words = marksona_kategooriad[
-            marksona_kategooriad["Kategooria"].isin(selected_categories)
+            marksona_kategooriad["Kategooria"]
+            .isin(selected_categories)
         ]["Märksõna"].unique()
 
-        keywords = keywords_series[keywords_series.isin(allowed_words)]
+        keywords = keywords_series[
+            keywords_series.isin(allowed_words)
+        ]
 
+    # KUI FILTREID EI OLE,
+    # KASUTAB KÕIKI MÄRKSÕNU
     else:
 
         keywords = keywords_series
 
-    keyword_counts = keywords.value_counts().head(80)
-
-    # KPI
-    k1, k2, k3 = st.columns(3)
-
-    k1.metric("Märksõnu kokku", f"{len(keywords):,}")
-
-    k2.metric("Unikaalseid märksõnu", f"{keywords.nunique():,}")
-
-    k3.metric(
-        "Kõige sagedasem", keyword_counts.index[0] if not keyword_counts.empty else "-"
+    # LEIAB KÕIGE SAGEDASEMAD MÄRKSÕNAD
+    keyword_counts = (
+        keywords
+        .value_counts()
+        .head(80)
     )
 
+    # KPI NÄITAJAD
+    k1, k2, k3 = st.columns(3)
+
+    # märksõnade koguarv
+    k1.metric(
+        "Märksõnu kokku",
+        f"{len(keywords):,}"
+    )
+
+    # unikaalsete märksõnade arv
+    k2.metric(
+        "Unikaalseid märksõnu",
+        f"{keywords.nunique():,}"
+    )
+
+    # kõige sagedasem märksõna
+    k3.metric(
+        "Kõige sagedasem",
+
+        keyword_counts.index[0]
+        if not keyword_counts.empty
+        else "-"
+    )
+
+    # KUI MÄRKSÕNU EI LEITUD
     if keywords.empty:
-        st.warning("Valitud filtritega sobivaid märksõnu ei leitud.")
+
+        st.warning(
+            "Valitud filtritega sobivaid märksõnu ei leitud."
+        )
+
         st.stop()
 
-# TOP KATEGOORIAD
+    # TOP KATEGOORIATE GRAAFIK
     st.markdown("---")
+
     st.subheader("Kõige sagedasemad kategooriad")
 
     st.caption(
         "Diagramm näitab, millised märksõnade kategooriad esinevad fotoarhiivis kõige sagedamini."
     )
 
-    filtered_pids = df["PID"].astype(str).str.strip().unique()
+    # võtab uuesti filtriga seotud PID-id
+    filtered_pids = (
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
 
+    # filtreerib kategooriad vastavalt PID-dele
     filtered_categories = marksona_kategooriad[
-        marksona_kategooriad["PID"].astype(str).isin(filtered_pids)
+        marksona_kategooriad["PID"]
+        .astype(str)
+        .isin(filtered_pids)
     ]
 
+    # loendab kõige sagedasemad kategooriad
     category_counts = (
         filtered_categories["Kategooria"]
         .value_counts()
@@ -2265,20 +2325,32 @@ with tab3:
         .reset_index()
     )
 
-    category_counts.columns = ["Kategooria", "Fotode arv"]
+    category_counts.columns = [
+        "Kategooria",
+        "Fotode arv"
+    ]
 
+    # sorteerib väiksemast suuremani
     category_counts = category_counts.sort_values(
         by="Fotode arv",
         ascending=True
     )
 
+    # LOOB KATEGOORIATE TULPGRAAFIKU
     fig_categories = px.bar(
+
         category_counts,
+
         x="Fotode arv",
+
         y="Kategooria",
+
         orientation="h",
+
         text="Fotode arv",
+
         color="Fotode arv",
+
         color_continuous_scale=[
             "#A8E6CF",
             "#6FD3B3",
@@ -2287,26 +2359,39 @@ with tab3:
         ],
     )
 
+    # kujundab tulbad ja hoveri
     fig_categories.update_traces(
+
         textposition="outside",
+
         marker_line_width=0,
+
         hovertemplate=(
             "<b>%{y}</b><br>"
             "Fotode arv: %{x}<extra></extra>"
         ),
     )
 
+    # kujundab kogu graafiku
     fig_categories.update_layout(
+
         height=520,
 
         plot_bgcolor="white",
+
         paper_bgcolor="white",
 
         coloraxis_showscale=False,
 
-        margin=dict(t=20, l=20, r=40, b=20),
+        margin=dict(
+            t=20,
+            l=20,
+            r=40,
+            b=20
+        ),
 
         xaxis_title="Fotode arv",
+
         yaxis_title="Kategooria",
 
         font=dict(size=15),
@@ -2322,14 +2407,19 @@ with tab3:
         ),
     )
 
+    # kuvab kategooriate graafiku
     st.plotly_chart(
         fig_categories,
         use_container_width=True,
         config={"displayModeBar": False},
     )
-    # KÕIGE SAGEDAMASED 80 MÄRKSÕNA
+
+    # KÕIGE SAGEDASEMAD MÄRKSÕNAD
     st.markdown("---")
+
     st.subheader("Kõige sagedasemad märksõnad")
+
+    # HTML konteiner märksõnade kaartide jaoks
     cards_html = """
     <div style="
         display:flex;
@@ -2344,12 +2434,20 @@ with tab3:
     ">
     """
 
+    # leiab suurima sageduse,
+    # et arvutada kaartide suurused
     max_count = keyword_counts.max()
 
+    # loob iga märksõna jaoks visuaalse kaardi
     for word, count in keyword_counts.items():
 
+        # dünaamiline fondi suurus
         size = 14 + (count / max_count) * 16
+
+        # dünaamiline läbipaistvus
         opacity = 0.45 + (count / max_count) * 0.45
+
+        # dünaamiline kaardi laius
         width = 140 + (count / max_count) * 260
 
         cards_html += f"""
@@ -2374,6 +2472,7 @@ with tab3:
             box-shadow:0 2px 10px rgba(0,0,0,0.05);
         ">
             {word}
+
             <div style="
                 font-size:12px;
                 opacity:0.85;
@@ -2381,79 +2480,132 @@ with tab3:
             ">
                 {count} fotot
             </div>
+
         </div>
         """
 
     cards_html += "</div>"
 
-    components.html(cards_html, height=700, scrolling=True)
+    # kuvab märksõnade kaardid
+    components.html(
+        cards_html,
+        height=700,
+        scrolling=True
+    )
 
-    # MÄRKSÕNA AJAS
-
+    # MÄRKSÕNA AJALINE ANALÜÜS
     st.markdown("---")
+
     st.subheader("Märksõna ajas")
+
     st.caption(
         "Graafik näitab, kuidas valitud märksõna kasutus fotoarhiivis ajas muutus."
     )
 
-    selected_word = st.selectbox("Vali märksõna", keyword_counts.index)
+    # märksõna valik
+    selected_word = st.selectbox(
+        "Vali märksõna",
+        keyword_counts.index
+    )
 
+    # leiab valitud märksõnaga seotud PID-id
     selected_word_pids = (
-        marksoned[marksoned["Märksõna"] == selected_word]["PID"]
+        marksoned[
+            marksoned["Märksõna"] == selected_word
+        ]["PID"]
+
         .dropna()
+
         .astype(str)
+
         .str.strip()
+
         .unique()
     )
 
-    keyword_data = df[df["PID"].astype(str).str.strip().isin(selected_word_pids)].copy()
+    # filtreerib andmed valitud märksõna järgi
+    keyword_data = df[
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(selected_word_pids)
+    ].copy()
 
-    keyword_data = keyword_data[keyword_data["Aasta"].notna()]
+    # jätab alles ainult aastaga kirjed
+    keyword_data = keyword_data[
+        keyword_data["Aasta"].notna()
+    ]
 
-    keyword_years = keyword_data.groupby("Aasta").size().reset_index(name="Fotode arv")
+    # loendab märksõna esinemised aastate lõikes
+    keyword_years = (
+        keyword_data
+        .groupby("Aasta")
+        .size()
+        .reset_index(name="Fotode arv")
+    )
 
+    # kuvab joondiagrammi,
+    # kui aastaid on piisavalt
     if keyword_years["Aasta"].nunique() > 1:
 
         fig_keyword_time = px.line(
-            keyword_years, x="Aasta", y="Fotode arv", markers=True
+            keyword_years,
+            x="Aasta",
+            y="Fotode arv",
+            markers=True
         )
 
         fig_keyword_time.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)"
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)"
         )
 
         st.plotly_chart(
-            fig_keyword_time, use_container_width=True, config={"displayModeBar": False}
+            fig_keyword_time,
+            use_container_width=True,
+            config={"displayModeBar": False}
         )
 
     else:
 
-        st.info("Ajatelje kuvamiseks on vaja rohkem erinevaid aastaid.")
+        st.info(
+            "Ajatelje kuvamiseks on vaja rohkem erinevaid aastaid."
+        )
 
-    # MÄRKSÕNA SEOSED
+    # SEOTUD MÄRKSÕNADE ANALÜÜS
     st.markdown("---")
+
     st.subheader("Seotud märksõnad")
 
     st.caption(
         "Diagramm näitab märksõnu, mis esinevad kõige sagedamini koos valitud märksõnaga."
     )
 
+    # leiab PID-id,
+    # kus valitud märksõna esineb
     selected_pids = set(
         marksoned[
             marksoned["Märksõna"] == selected_word
         ]["PID"].astype(str)
     )
 
+    # leiab kõik märksõnad samadel fotodel
     related_df = marksoned[
-        marksoned["PID"].astype(str).isin(selected_pids)
+        marksoned["PID"]
+        .astype(str)
+        .isin(selected_pids)
     ]
 
+    # loendab seotud märksõnade sageduse
     related_counts = (
         related_df[
             related_df["Märksõna"] != selected_word
         ]["Märksõna"]
+
         .value_counts()
+
         .head(10)
+
         .reset_index()
     )
 
@@ -2462,18 +2614,27 @@ with tab3:
         "Seose tugevus"
     ]
 
+    # sorteerib väärtused kasvavalt
     related_counts = related_counts.sort_values(
         by="Seose tugevus",
         ascending=True
     )
 
+    # LOOB SEOSETE TULPGRAAFIKU
     fig_related = px.bar(
+
         related_counts,
+
         x="Seose tugevus",
+
         y="Märksõna",
+
         orientation="h",
+
         text="Seose tugevus",
+
         color="Seose tugevus",
+
         color_continuous_scale=[
             "#A8E6CF",
             "#6FD3B3",
@@ -2482,19 +2643,26 @@ with tab3:
         ],
     )
 
+    # kujundab tulbad ja hoveri
     fig_related.update_traces(
+
         textposition="outside",
+
         marker_line_width=0,
+
         hovertemplate=(
             "<b>%{y}</b><br>"
             "Seose tugevus: %{x}<extra></extra>"
         ),
     )
 
+    # kujundab kogu graafiku
     fig_related.update_layout(
+
         height=520,
 
         plot_bgcolor="white",
+
         paper_bgcolor="white",
 
         coloraxis_showscale=False,
@@ -2507,6 +2675,7 @@ with tab3:
         ),
 
         xaxis_title="Seose tugevus",
+
         yaxis_title="Märksõna",
 
         font=dict(size=15),
@@ -2522,40 +2691,86 @@ with tab3:
         ),
     )
 
+    # kuvab seotud märksõnade graafiku
     st.plotly_chart(
         fig_related,
         use_container_width=True,
         config={"displayModeBar": False}
     )
 
+# ISIKUTE ANALÜÜSI TAB
 with tab4:
+
+    # TABI PEALKIRI JA KIRJELDUS
     st.header("Isikute analüüs")
-    st.caption("Fotodel kujutatud isikute sagedus ja seosed.")
 
-    filtered_pids = df["PID"].astype(str).str.strip().unique()
+    st.caption(
+        "Fotodel kujutatud isikute sagedus ja seosed."
+    )
 
+    # FILTREERITUD PID-DE VÕTMINE
+    filtered_pids = (
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
+
+    # FILTREERIB ISIKUD VASTAVALT AKTIIVSETELE FILTRITELE
     isikud_filtered = people_df[
-        people_df["PID"].astype(str).str.strip().isin(filtered_pids)
+        people_df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(filtered_pids)
     ].copy()
 
+    # KUI SOBIVAID ISIKUID EI LEITUD
     if isikud_filtered.empty:
 
-        st.warning("Valitud filtritega isikuid ei leitud.")
+        st.warning(
+            "Valitud filtritega isikuid ei leitud."
+        )
 
     else:
-        # KPI
+
+        # KPI NÄITAJAD
         k1, k2, k3, k4 = st.columns(4)
 
-        k1.metric("Unikaalseid isikuid", isikud_filtered["Isik"].dropna().nunique())
+        # unikaalsete isikute arv
+        k1.metric(
+            "Unikaalseid isikuid",
+            isikud_filtered["Isik"]
+            .dropna()
+            .nunique()
+        )
 
-        k2.metric("Isikukirjeid kokku", len(isikud_filtered))
+        # kõik isikukirjed kokku
+        k2.metric(
+            "Isikukirjeid kokku",
+            len(isikud_filtered)
+        )
 
-        k3.metric("Fotodel kokku", len(isikud_filtered["PID"].dropna().unique()))
-        top_person = isikud_filtered["Isik"].value_counts()
+        # fotode arv,
+        # millel on vähemalt üks isik
+        k3.metric(
+            "Fotodel kokku",
+            len(
+                isikud_filtered["PID"]
+                .dropna()
+                .unique()
+            )
+        )
+
+        # leiab kõige sagedasema isiku
+        top_person = (
+            isikud_filtered["Isik"]
+            .value_counts()
+        )
 
         if not top_person.empty:
 
             top_name = top_person.index[0]
+
             top_count = top_person.iloc[0]
 
             top_display = f"{top_name} ({top_count})"
@@ -2564,68 +2779,122 @@ with tab4:
 
             top_display = "-"
 
-        k4.metric("Kõige sagedasem isik", top_display)
+        # kuvab kõige sagedasema isiku
+        k4.metric(
+            "Kõige sagedasem isik",
+            top_display
+        )
 
-        # TOP ISIKUD + ISIKUPAARID
+        # TOP ISIKUD JA ISIKUPAARID
         st.markdown("---")
+
         col1, col2 = st.columns(2)
 
         # TOP ISIKUD
         with col1:
 
             st.subheader("Kõige sagedasemad isikud")
+
             st.caption(
                 "Diagramm kuvab isikud, kes esinevad andmestikus kõige sagedamini."
             )
+
+            # slider top isikute arvu määramiseks
             top_isik_n = st.slider(
-                "Näita top N isikut", 5, 20, 10, key="top_isikud_slider"
+                "Näita top N isikut",
+                5,
+                20,
+                10,
+                key="top_isikud_slider"
             )
 
+            # loendab kõige sagedasemad isikud
             top_people = (
-                isikud_filtered["Isik"].value_counts().head(top_isik_n).reset_index()
+                isikud_filtered["Isik"]
+                .value_counts()
+                .head(top_isik_n)
+                .reset_index()
             )
 
-            top_people.columns = ["Isik", "Fotode arv"]
+            top_people.columns = [
+                "Isik",
+                "Fotode arv"
+            ]
 
+            # LOOB TOP ISIKUTE GRAAFIKU
             fig_people = px.bar(
+
                 top_people,
+
                 x="Fotode arv",
+
                 y="Isik",
+
                 orientation="h",
+
                 color="Fotode arv",
+
                 color_continuous_scale="Tealgrn",
             )
 
+            # kujundab graafiku
             fig_people.update_layout(
-                yaxis=dict(categoryorder="total ascending"),
+
+                yaxis=dict(
+                    categoryorder="total ascending"
+                ),
+
                 plot_bgcolor="rgba(0,0,0,0)",
+
                 paper_bgcolor="rgba(0,0,0,0)",
+
                 coloraxis_showscale=False,
+
                 height=450,
             )
 
+            # kuvab graafiku
             st.plotly_chart(
-                fig_people, use_container_width=True, config={"displayModeBar": False}
+                fig_people,
+                use_container_width=True,
+                config={"displayModeBar": False}
             )
 
         # TOP ISIKUPAARID
-
         with col2:
 
             st.subheader("Koos esinevad isikupaarid")
+
             st.caption(
                 "Diagramm näitab, millised isikupaarid esinevad fotodel kõige sagedamini koos."
             )
+
+            # slider top paaride arvu määramiseks
             top_pair_n = st.slider(
-                "Näita top N isikupaari", 5, 15, 10, key="top_isikupaarid_slider"
+                "Näita top N isikupaari",
+                5,
+                15,
+                10,
+                key="top_isikupaarid_slider"
             )
 
+            # loendur isikupaaride jaoks
             pair_counter = Counter()
 
-            grouped_people = isikud_filtered.groupby("PID")["Isik"].apply(
-                lambda x: sorted(set(x.dropna().astype(str)))
+            # grupeerib isikud PID järgi
+            grouped_people = (
+                isikud_filtered
+                .groupby("PID")["Isik"]
+                .apply(
+                    lambda x: sorted(
+                        set(
+                            x.dropna().astype(str)
+                        )
+                    )
+                )
             )
 
+            # arvutab koos esinevad paarid
             for people in grouped_people:
 
                 if len(people) >= 2:
@@ -2634,36 +2903,62 @@ with tab4:
 
                         pair_counter[pair] += 1
 
+            # loob dataframe'i top paaridest
             pair_data = [
-                {"Isikupaar": f"{a} + {b}", "Koosesinemised": count}
-                for (a, b), count in pair_counter.most_common(top_pair_n)
+
+                {
+                    "Isikupaar": f"{a} + {b}",
+                    "Koosesinemised": count
+                }
+
+                for (a, b), count
+                in pair_counter.most_common(top_pair_n)
             ]
 
             pair_df = pd.DataFrame(pair_data)
 
+            # kui paare ei leitud
             if pair_df.empty:
 
-                st.info("Koosesinevaid isikupaare ei leitud.")
+                st.info(
+                    "Koosesinevaid isikupaare ei leitud."
+                )
 
             else:
 
+                # LOOB ISIKUPAARIDE GRAAFIKU
                 fig_pairs = px.bar(
+
                     pair_df,
+
                     x="Koosesinemised",
+
                     y="Isikupaar",
+
                     orientation="h",
+
                     color="Koosesinemised",
+
                     color_continuous_scale="Tealgrn",
                 )
 
+                # kujundab graafiku
                 fig_pairs.update_layout(
-                    yaxis=dict(categoryorder="total ascending"),
+
+                    yaxis=dict(
+                        categoryorder="total ascending"
+                    ),
+
                     plot_bgcolor="rgba(0,0,0,0)",
+
                     paper_bgcolor="rgba(0,0,0,0)",
+
                     coloraxis_showscale=False,
+
                     height=450,
                 )
 
+                # kuvab graafiku
                 st.plotly_chart(
                     fig_pairs,
                     use_container_width=True,
@@ -2671,56 +2966,115 @@ with tab4:
                 )
 
         # ISIKU OTSING
-
         st.markdown("---")
+
         st.subheader("Isiku otsing")
+
         st.caption(
             "Tabel kuvab kõik valitud isikuga seotud fotod ja nende metaandmed."
         )
+
+        # isiku valik dropdownist
         selected_person = st.selectbox(
-            "Vali isik", sorted(isikud_filtered["Isik"].dropna().astype(str).unique())
+            "Vali isik",
+
+            sorted(
+                isikud_filtered["Isik"]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
         )
+
         st.caption(
             "Tabel kuvab kõik valitud isikuga seotud fotod ja nende metaandmed."
         )
+
+        # leiab valitud isikuga seotud PID-id
         person_pids = (
-            isikud_filtered[isikud_filtered["Isik"] == selected_person]["PID"]
+            isikud_filtered[
+                isikud_filtered["Isik"] == selected_person
+            ]["PID"]
+
             .astype(str)
+
             .str.strip()
+
             .unique()
         )
 
-        person_df = df[df["PID"].astype(str).str.strip().isin(person_pids)]
+        # filtreerib fotod valitud isiku järgi
+        person_df = df[
+            df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(person_pids)
+        ]
 
-        st.metric("Fotode arv", len(person_df))
+        # kuvab fotode arvu
+        st.metric(
+            "Fotode arv",
+            len(person_df)
+        )
 
-        show_cols = ["PID", "Aasta", "Kihelkond", "Koht täpsemalt", "Sisu kirjeldus"]
+        # tabelis kuvatavad veerud
+        show_cols = [
+            "PID",
+            "Aasta",
+            "Kihelkond",
+            "Koht täpsemalt",
+            "Sisu kirjeldus"
+        ]
 
-        existing_cols = [c for c in show_cols if c in person_df.columns]
+        # jätab alles ainult olemasolevad veerud
+        existing_cols = [
+            c for c in show_cols
+            if c in person_df.columns
+        ]
 
-        st.dataframe(person_df[existing_cols].head(100), use_container_width=True)
+        # kuvab tabeli
+        st.dataframe(
+            person_df[existing_cols].head(100),
+            use_container_width=True
+        )
 
-        # ISIKUD AJAS
+        # ISIK AJAS
         st.markdown("---")
+
         st.subheader("Isik ajas")
+
         st.caption(
             "Graafik näitab valitud isiku esinemist fotodel aastate lõikes."
         )
+
+        # loendab isiku esinemise aastate lõikes
         person_years = (
-            person_df[person_df["Aasta"].notna()]
+            person_df[
+                person_df["Aasta"].notna()
+            ]
+
             .groupby("Aasta")
+
             .size()
+
             .reset_index(name="Fotode arv")
         )
 
+        # kuvab graafiku,
+        # kui aastaid on piisavalt
         if person_years["Aasta"].nunique() > 1:
 
             fig_person_time = px.line(
-                person_years, x="Aasta", y="Fotode arv", markers=True
+                person_years,
+                x="Aasta",
+                y="Fotode arv",
+                markers=True
             )
 
             fig_person_time.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", height=250
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                height=250
             )
 
             st.plotly_chart(
@@ -2731,49 +3085,87 @@ with tab4:
 
         else:
 
-            st.info("Ajatelje kuvamiseks " "pole piisavalt erinevaid aastaid.")
+            st.info(
+                "Ajatelje kuvamiseks pole piisavalt erinevaid aastaid."
+            )
 
         # KOOS ESINEVAD ISIKUD
         st.markdown("---")
+
         st.subheader("Koos esinevad isikud")
+
         st.caption(
             "Diagramm näitab, millised isikud esinevad fotodel kõige sagedamini koos teiste isikutega."
         )
+
+        # leiab seotud inimesed
         related_people = isikud_filtered[
-            isikud_filtered["PID"].astype(str).isin(person_pids)
+            isikud_filtered["PID"]
+            .astype(str)
+            .isin(person_pids)
         ].copy()
 
-        related_people["Isik"] = related_people["Isik"].astype(str).str.strip()
+        related_people["Isik"] = (
+            related_people["Isik"]
+            .astype(str)
+            .str.strip()
+        )
 
+        # loendab koos esinevad inimesed
         related_counts = (
-            related_people[related_people["Isik"] != selected_person]["Isik"]
+            related_people[
+                related_people["Isik"] != selected_person
+            ]["Isik"]
+
             .value_counts()
+
             .head(15)
+
             .reset_index()
         )
 
-        related_counts.columns = ["Isik", "Koosesinemised"]
+        related_counts.columns = [
+            "Isik",
+            "Koosesinemised"
+        ]
 
+        # kui seotud inimesi ei leitud
         if related_counts.empty:
 
-            st.info("Selle isikuga seotud teisi inimesi ei leitud.")
+            st.info(
+                "Selle isikuga seotud teisi inimesi ei leitud."
+            )
 
         else:
 
+            # LOOB SEOTUD ISIKUTE GRAAFIKU
             fig_related_people = px.bar(
+
                 related_counts,
+
                 x="Koosesinemised",
+
                 y="Isik",
+
                 orientation="h",
+
                 color="Koosesinemised",
+
                 color_continuous_scale="Tealgrn",
             )
 
             fig_related_people.update_layout(
-                yaxis=dict(categoryorder="total ascending"),
+
+                yaxis=dict(
+                    categoryorder="total ascending"
+                ),
+
                 plot_bgcolor="rgba(0,0,0,0)",
+
                 paper_bgcolor="rgba(0,0,0,0)",
+
                 coloraxis_showscale=False,
+
                 height=450,
             )
 
@@ -2783,9 +3175,9 @@ with tab4:
                 config={"displayModeBar": False},
             )
 
-        # VÕRGUSTIK
-
+        # VÕRGUSTIKU ANALÜÜS
         st.markdown("---")
+
         st.subheader("Isikute ja fotograafide võrgustikud")
 
         st.caption(
@@ -2794,41 +3186,65 @@ with tab4:
             "kes on märgitud fotograafi ja pildil oleva isikuna."
         )
 
-        # VÕRGUSTIKU TÜÜP
-
+        # VÕRGUSTIKU TÜÜBI VALIK
         network_type = st.radio(
             "Vali võrgustiku tüüp",
-            ["Isik–isik: kes on koos pildil", "Fotograaf–isik: kes keda pildistas"],
+
+            [
+                "Isik–isik: kes on koos pildil",
+                "Fotograaf–isik: kes keda pildistas"
+            ],
         )
 
-        # FILTRID
+        # VÕRGUSTIKU FILTRID
+        min_edges = st.slider(
+            "Minimaalne seoste arv",
+            1,
+            10,
+            2
+        )
 
-        min_edges = st.slider("Minimaalne seoste arv", 1, 10, 2)
+        max_edges = st.slider(
+            "Maksimaalne kuvatavate seoste arv",
+            20,
+            250,
+            50
+        )
 
-        max_edges = st.slider("Maksimaalne kuvatavate seoste arv", 20, 250, 50)
-
-        # ANDMED
-
+        # valmistab andmed võrgustiku jaoks ette
         network_df = isikud_filtered.copy()
 
-        network_df["Isik"] = network_df["Isik"].astype(str).str.strip()
+        network_df["Isik"] = (
+            network_df["Isik"]
+            .astype(str)
+            .str.strip()
+        )
 
-        network_df["Fotograaf"] = network_df["Fotograaf"].astype(str).str.strip()
+        network_df["Fotograaf"] = (
+            network_df["Fotograaf"]
+            .astype(str)
+            .str.strip()
+        )
 
-
-
+        # loob NetworkX graafi
         G = nx.Graph()
 
         # ISIK-ISIK VÕRGUSTIK
-
         if network_type == "Isik–isik: kes on koos pildil":
 
-            grouped_people = network_df.groupby("PID")["Isik"].apply(
-                lambda x: sorted(set(x.dropna()))
+            grouped_people = (
+                network_df
+                .groupby("PID")["Isik"]
+                .apply(
+                    lambda x: sorted(
+                        set(x.dropna())
+                    )
+                )
             )
 
             pair_counter = {}
 
+            # loendab koos esinevad inimesed
             for people in grouped_people:
 
                 if len(people) >= 2:
@@ -2841,14 +3257,21 @@ with tab4:
 
                         pair_counter[pair] += 1
 
+            # sorteerib seosed tugevuse järgi
             sorted_pairs = sorted(
-                pair_counter.items(), key=lambda x: x[1], reverse=True
+                pair_counter.items(),
+                key=lambda x: x[1],
+                reverse=True
             )
 
-            sorted_pairs = [pair for pair in sorted_pairs if pair[1] >= min_edges][
-                :max_edges
-            ]
+            # jätab alles tugevamad seosed
+            sorted_pairs = [
+                pair
+                for pair in sorted_pairs
+                if pair[1] >= min_edges
+            ][:max_edges]
 
+            # lisab sõlmed ja servad graafi
             for (a, b), count in sorted_pairs:
 
                 G.add_node(a, group="isik")
@@ -2858,178 +3281,276 @@ with tab4:
                 G.add_edge(a, b, weight=count)
 
         # FOTOGRAAF-ISIK VÕRGUSTIK
-
         else:
 
             edge_counts = (
-                network_df.dropna(subset=["Fotograaf", "Isik"])
+                network_df
+                .dropna(subset=["Fotograaf", "Isik"])
+
                 .groupby(["Fotograaf", "Isik"])
+
                 .size()
+
                 .reset_index(name="Kordused")
             )
 
-            edge_counts = edge_counts[edge_counts["Kordused"] >= min_edges]
+            edge_counts = edge_counts[
+                edge_counts["Kordused"] >= min_edges
+            ]
 
-            edge_counts = edge_counts.sort_values("Kordused", ascending=False).head(
-                max_edges
+            edge_counts = (
+                edge_counts
+                .sort_values("Kordused", ascending=False)
+                .head(max_edges)
             )
 
+            # lisab sõlmed ja servad graafi
             for _, row in edge_counts.iterrows():
 
                 fotograaf = row["Fotograaf"]
+
                 isik = row["Isik"]
+
                 kaal = row["Kordused"]
 
-                G.add_node(fotograaf, group="fotograaf")
+                G.add_node(
+                    fotograaf,
+                    group="fotograaf"
+                )
 
-                G.add_node(isik, group="isik")
+                G.add_node(
+                    isik,
+                    group="isik"
+                )
 
-                G.add_edge(fotograaf, isik, weight=kaal)
+                G.add_edge(
+                    fotograaf,
+                    isik,
+                    weight=kaal
+                )
 
         # TÜHI VÕRGUSTIK
-
         if len(G.nodes()) == 0:
 
-            st.info("Valitud filtritega võrgustikku ei leitud.")
-
-        # PYVIS
-        else:
-            net = Network(
-                height="900px", width="100%", bgcolor="#ffffff", font_color="black"
+            st.info(
+                "Valitud filtritega võrgustikku ei leitud."
             )
 
-            # SÕLMED
+        # PYVIS VÕRGUSTIK
+        else:
+
+            net = Network(
+                height="900px",
+                width="100%",
+                bgcolor="#ffffff",
+                font_color="black"
+            )
+
+            # lisab sõlmed
             for node in G.nodes():
 
                 group = G.nodes[node].get("group")
 
+                # fotograafide sõlmed
                 if group == "fotograaf":
 
-                    net.add_node(node, label=node, color="#199890", size=10)
+                    net.add_node(
+                        node,
+                        label=node,
+                        color="#199890",
+                        size=10
+                    )
 
+                # isikute sõlmed
                 else:
 
-                    net.add_node(node, label=node, color="#90d287", size=6)
+                    net.add_node(
+                        node,
+                        label=node,
+                        color="#90d287",
+                        size=6
+                    )
 
-            # SERVAD
-
+            # lisab servad
             for source, target, data in G.edges(data=True):
 
-                if source in net.get_nodes() and target in net.get_nodes():
+                if (
+                    source in net.get_nodes()
+                    and target in net.get_nodes()
+                ):
 
                     net.add_edge(
                         source,
                         target,
+
                         value=data["weight"],
+
                         color={
                             "color": "rgba(120,120,120,0.25)",
                             "highlight": "#ff4d4d",
                         },
                     )
 
-            # OPTIONS
-
+            # VÕRGUSTIKU SEADED
             net.options = {
+
                 "layout": {
-                  "improvedLayout": True
+                    "improvedLayout": True
                 },
 
-              "nodes": {
-                  "font": {
-                      "size": 6
-                  }
-              },
+                "nodes": {
+                    "font": {
+                        "size": 6
+                    }
+                },
 
-              "edges": {
-                "smooth": False
-              },
+                "edges": {
+                    "smooth": False
+                },
 
-              "physics": {
-                "enabled": True,
-                "stabilization": {
-                  "enabled": True,
-                  "iterations": 150
-                  },
+                "physics": {
 
-                "barnesHut": {
-                  "gravitationalConstant": -5000,
-                  "centralGravity": 0.25,
-                  "springLength": 70,
-                  "springConstant": 0.04,
-                  "damping": 0.8
+                    "enabled": True,
+
+                    "stabilization": {
+                        "enabled": True,
+                        "iterations": 150
+                    },
+
+                    "barnesHut": {
+
+                        "gravitationalConstant": -5000,
+
+                        "centralGravity": 0.25,
+
+                        "springLength": 70,
+
+                        "springConstant": 0.04,
+
+                        "damping": 0.8
+                    }
+                },
+
+                "interaction": {
+
+                    "hover": True,
+
+                    "navigationButtons": True,
+
+                    "keyboard": True,
+
+                    "hoverConnectedEdges": True,
+
+                    "selectConnectedEdges": True
                 }
-              },
-
-              "interaction": {
-                  "hover": True,
-                  "navigationButtons": True,
-                  "keyboard": True,
-                  "hoverConnectedEdges": True,
-                  "selectConnectedEdges":True
-              }
             }
 
+            # genereerib HTML võrgustiku
             html = net.generate_html()
 
-            components.html(html, height=950)
-# ML ABIFUNKTSIOONID
+            # kuvab võrgustiku Streamlitis
+            components.html(
+                html,
+                height=950
+            )
 
+# ML ANALÜÜSI ABIFUNKTSIOONID
+
+# jagab märksõnade/kategooriate stringi eraldi väärtusteks
 def split_cats(series):
 
+    # kui andmed puuduvad,
+    # tagastab tühja Series objekti
     if series is None:
 
         return pd.Series(dtype="object")
 
+    # puhastab ja jagab kategooriad eraldi ridadeks
     return (
+
         series
+
         .dropna()
+
         .astype(str)
+
+        # asendab erinevad eraldajad komaga
         .str.replace(";", ",", regex=False)
+
         .str.replace("|", ",", regex=False)
+
+        # jagab väärtused listiks
         .str.split(",")
+
+        # teeb igast väärtusest eraldi rea
         .explode()
+
+        # eemaldab liigsed tühikud
         .astype(str)
+
         .str.strip()
     )
 
 
+# kontrollib,
+# kas ML ennustus kattub käsitsi määratud kategooriaga
 def cat_match(row, manual_col, pred_cols):
 
+    # käsitsi lisatud kategooriad
     manual = set()
 
+    # kontrollib,
+    # kas käsitsi kategooria eksisteerib
     if pd.notna(row.get(manual_col)):
 
+        # puhastab ja teisendab kategooriad väikesteks tähtedeks
         manual = {
 
             x.strip().lower()
 
             for x in str(row[manual_col])
+
             .replace(";", ",")
+
             .replace("|", ",")
+
             .split(",")
 
             if x.strip()
         }
 
+    # ML ennustused
     preds = set()
 
+    # läbib kõik ennustuste veerud
     for col in pred_cols:
 
         if pd.notna(row.get(col)):
 
             preds.add(
-                str(row[col]).strip().lower()
+                str(row[col])
+                .strip()
+                .lower()
             )
 
+    # kontrollib,
+    # kas vähemalt üks ennustus kattub käsitsi kategooriaga
     return len(manual & preds) > 0
 
 
+# turvaline tekstiline otsing Series objektis
 def safe_contains(series, text):
 
     return (
+
         series
+
+        # asendab puuduvad väärtused tühja stringiga
         .fillna("")
+
         .astype(str)
+
+        # otsib teksti sõltumata suurtest/väikestest tähtedest
         .str.contains(
             text,
             case=False,
@@ -3037,14 +3558,17 @@ def safe_contains(series, text):
         )
     )
 
+# ML ANALÜÜSI TAB
 with tab5:
 
+    # TABI PEALKIRI JA KIRJELDUS
     st.header(" ML märksõnade analüüs")
 
     st.markdown("""
     Kaks vaadet: põhifotodega seotud CLIP tulemused (PID olemas) ja kõik CLIP sh `image_only`.
     """)
 
+    # SELGITAV PILT CLIP TÖÖST
     st.image(
         "clip_yhe_pildi_selgitus.png",
         use_container_width=True
@@ -3054,26 +3578,32 @@ with tab5:
         "Näide: CLIP pildi ja tekstikategooriate sobivuse hindamine"
     )
 
+    # KOPEERIB FILTREERITUD PÕHIANDMED ML ANALÜÜSI JAOKS
     ml_df = df.copy()
 
+    # KONTROLLIB,
+    # KAS ML VEERUD ON OLEMAS
     if "pred_top1" not in ml_df.columns:
 
         st.warning("ML andmeid ei leitud.")
 
     else:
 
-        # KPI
+        # KPI PLOKK
         st.markdown("---")
 
         c1, c2, c3, c4 = st.columns(4)
 
+        # FILTRIS OLEVATE FOTODE ARV
         c1.metric(
             "Fotosid filtris",
             f"{len(df):,}"
         )
 
+        # KÕIKIDE CLIP TULEMUSTE ARV
         clip_total = len(ml_raw)
 
+        # PID-GA CLIP TULEMUSED
         clip_pid = (
             ml_raw["PID"]
             .astype(str)
@@ -3092,6 +3622,7 @@ with tab5:
             ])
         ].count()
 
+        # IMAGE-ONLY TULEMUSTE ARV
         image_only = clip_total - clip_pid
 
         c2.metric(
@@ -3109,12 +3640,14 @@ with tab5:
             f"{image_only:,}"
         )
 
+        # SELGITUS IMAGE-ONLY TULEMUSTE KOHTA
         st.markdown("""
         `image_only` : pilt leiti kaustast, aga PID-i ei saanud külge panna.
         """)
 
         st.markdown("---")
 
+        # VAATE VALIK
         view_mode = st.radio(
             "Vali ML-vaade",
             [
@@ -3124,6 +3657,8 @@ with tab5:
             horizontal=True
         )
 
+        # MÄÄRAB,
+        # MILLIST ANDMESTIKKU KUVAKSE
         if view_mode == "Kõik CLIP, sh image-only":
 
             graph_df = ml_raw.copy()
@@ -3136,18 +3671,22 @@ with tab5:
 
             manual_col = "Märksõna kategooria"
 
-        # TOP KATEGOORIAD
+        # TOP KATEGOORIATE GRAAFIKUD
         col1, col2 = st.columns(2)
 
         # OLEMASOLEVAD KATEGOORIAD
         with col1:
 
             st.subheader("Olemasolevad kategooriad")
+
+            # LOEB KÄSITSI LISATUD KATEGOORIATE SAGEDUSED
             if manual_col in graph_df.columns:
+
                 existing = split_cats(
                     graph_df[manual_col]
                 ).value_counts().head(20)
 
+            # JOONISTAB KATEGOORIATE GRAAFIKU
             if not existing.empty:
 
                 fig_existing = px.bar(
@@ -3186,11 +3725,12 @@ with tab5:
                     use_container_width=True
                 )
 
-        # CLIP TOP1
+        # CLIP TOP1 KATEGOORIAD
         with col2:
 
             st.subheader("CLIP top1 kategooriad")
 
+            # LOEB CLIP TOP1 ENNUSTUSTE SAGEDUSED
             clip_top = (
                 graph_df["pred_top1"]
                 .dropna()
@@ -3199,6 +3739,7 @@ with tab5:
                 .head(20)
             )
 
+            # JOONISTAB CLIP TOP1 GRAAFIKU
             if not clip_top.empty:
 
                 fig_clip = px.bar(
@@ -3239,9 +3780,11 @@ with tab5:
 
         st.markdown("---")
 
-        # KATTUVUS
+        # ML JA KÄSITSI KATEGOORIATE KATTUVUS
         st.subheader("ML ja olemasolevate kategooriate kattuvus")
 
+        # VALIB READ,
+        # KUS ON NII ML ENNUSTUS KUI KA KÄSITSI KATEGOORIA
         if manual_col in graph_df.columns:
 
             eval_df = graph_df[
@@ -3254,8 +3797,10 @@ with tab5:
 
             eval_df = pd.DataFrame()
 
+        # ARVUTAB KATTUVUSE NÄITAJAD
         if not eval_df.empty:
 
+            # TOP1 KATTUVUS
             eval_df["top1_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3267,6 +3812,7 @@ with tab5:
                 axis=1
             )
 
+            # TOP3 KATTUVUS
             eval_df["top3_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3282,6 +3828,7 @@ with tab5:
                 axis=1
             )
 
+            # TOP5 KATTUVUS
             eval_df["top5_match"] = eval_df.apply(
 
                 lambda r: cat_match(
@@ -3299,6 +3846,7 @@ with tab5:
                 axis=1
             )
 
+            # KPI NÄITAJAD
             m1, m2, m3 = st.columns(3)
 
             m1.metric(
@@ -3315,327 +3863,7 @@ with tab5:
                 "Top5 kattuvus",
                 f"{eval_df['top5_match'].mean() * 100:.1f}%"
             )
-
-        st.markdown("---")
-
-        # HEATMAP
-        st.subheader("Kategooriate kattuvus")
-
-        heat = eval_df.copy()
-
-        heat["manual"] = (
-            heat[manual_col]
-            .astype(str)
-            .str.replace(";", ",", regex=False)
-            .str.replace("|", ",", regex=False)
-            .str.split(",")
-        )
-
-        pairs = heat.explode("manual")
-
-        pairs["manual"] = (
-            pairs["manual"]
-            .astype(str)
-            .str.strip()
-        )
-
-        pairs = pairs[
-            pairs["manual"] != ""
-        ]
-
-        mat = (
-            pairs
-            .groupby(["manual", "pred_top1"])
-            .size()
-            .reset_index(name="arv")
-        )
-
-        if not mat.empty:
-
-            fig_heat = px.density_heatmap(
-
-                mat,
-
-                x="pred_top1",
-
-                y="manual",
-
-                z="arv",
-
-                color_continuous_scale="Purples",
-
-                labels={
-                    "pred_top1": "CLIP top1",
-                    "manual": "Olemasolev kategooria",
-                    "arv": "Fotode arv"
-                }
-            )
-
-            fig_heat.update_layout(
-                height=650,
-                paper_bgcolor="white",
-                plot_bgcolor="white"
-            )
-
-            st.plotly_chart(
-                fig_heat,
-                use_container_width=True
-            )
-
-        st.markdown("---")
-
-        # ══════════════════ CLIP KVALITEET KATEGOORIATE KAUPA ═══════════════════════
-
-    if not ml_metrics.empty:
-
-        st.subheader(" CLIP mudeli kvaliteet kategooriate kaupa")
-
-        st.markdown("""
-    See graafik näitab, milliste märksõnakategooriate puhul töötab CLIP mudel paremini.
-    Mida kõrgem väärtus, seda täpsemalt suutis mudel vastavat kategooriat ennustada.
-    """)
-
-        mtr = ml_metrics.copy()
-
-        mtr.columns = (
-            mtr.columns
-            .astype(str)
-            .str.strip()
-        )
-
-        mc2 = next(
-            (
-                c for c in [
-                    "f1_top3",
-                    "top3_f1",
-                    "hit_any_top3",
-                    "top3_hit_rate"
-                ]
-                if c in mtr.columns
-            ),
-            None
-        )
-
-        cc3 = next(
-            (
-                c for c in [
-                    "cluster",
-                    "kategooria",
-                    "Märksõna kategooria"
-                ]
-                if c in mtr.columns
-            ),
-            None
-        )
-
-        if mc2 and cc3:
-
-            mtr[mc2] = pd.to_numeric(
-                mtr[mc2],
-                errors="coerce"
-            )
-
-            fig = px.bar(
-
-                mtr.dropna(subset=[mc2]).sort_values(mc2),
-
-                x=mc2,
-                y=cc3,
-
-                orientation="h",
-
-                title="Milliste kategooriate puhul CLIP paremini töötab?"
-            )
-
-            fig.update_layout(
-                height=550
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
-
-# ═════════════════════════════════════════════════════════════════════════════
-
-        # TABEL
-        st.subheader("ML tulemuste tabel")
-
-        search_ml = st.text_input(
-            "🔍 Otsi ML tabelist"
-        )
-
-        show_ml = graph_df.copy()
-
-        if search_ml:
-
-            mask = pd.Series(
-                False,
-                index=show_ml.index
-            )
-
-            searchable_cols = [
-
-                "Sisu kirjeldus",
-                "Fotograaf",
-                "pred_top1",
-                "pred_top2",
-                "pred_top3",
-                "Märksõna kategooria"
-
-            ]
-
-            for col in searchable_cols:
-
-                if col in show_ml.columns:
-
-                    mask |= safe_contains(
-                        show_ml[col],
-                        search_ml
-                    )
-
-            show_ml = show_ml[mask]
-
-        if st.checkbox(
-            "Näita ainult ridu, kus top3 ei kattu"
-        ):
-
-            show_ml = show_ml[
-                ~show_ml.apply(
-                    lambda r: cat_match(
-                        r,
-                        manual_col,
-                        [
-                            "pred_top1",
-                            "pred_top2",
-                            "pred_top3"
-                        ]
-                    ),
-                    axis=1
-                )
-            ]
-
-        ml_cols = [
-
-            c for c in [
-
-                "PID",
-                "Fotograaf",
-                "Märksõna kategooria",
-                "pred_top1",
-                "pred_top2",
-                "pred_top3",
-                "pred_top1_score",
-                "confidence_margin_top1_top2",
-                "ML top3 koondskoor",
-                "ML otsuse tugevus",
-                "Sisu kirjeldus",
-                "failinimi"
-
-            ]
-
-            if c in show_ml.columns
-        ]
-
-        st.markdown(
-            f"Näidatakse **{len(show_ml):,}** rida"
-        )
-
-        st.dataframe(
-            show_ml[ml_cols].head(1000),
-            use_container_width=True,
-            hide_index=True,
-            height=650
-        )
-
-        # CSV
-        csv_ml = (
-            show_ml[ml_cols]
-            .to_csv(index=False)
-            .encode("utf-8")
-        )
-
-        st.download_button(
-            "⬇️ Lae ML tabel CSV-na",
-            data=csv_ml,
-            file_name="era_ml_tulemused.csv",
-            mime="text/csv"
-        )
-
-# ANDMETABELI LISAVEERUD
-
-df_table = df.copy()
-
-df_table["PID"] = df_table["PID"].astype(str).str.strip()
-
-if "Fotograaf (puhastatud)" in master.columns:
-    photographers = (
-        master[["PID", "Fotograaf (puhastatud)"]]
-        .dropna()
-        .drop_duplicates()
-        .groupby("PID")["Fotograaf (puhastatud)"]
-        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
-        .reset_index()
-        .rename(columns={"Fotograaf (puhastatud)": "Fotograaf"})
-    )
-
-    df_table = df_table.drop(columns=["Fotograaf"], errors="ignore")
-    df_table = df_table.merge(photographers, on="PID", how="left")
-
-if "Žanr" in master.columns:
-    genres = master[["PID", "Žanr"]].drop_duplicates("PID")
-
-    df_table = df_table.drop(columns=["Žanr"], errors="ignore")
-    df_table = df_table.merge(genres, on="PID", how="left")
-
-if "failinimi" in master.columns:
-    filenames = master[["PID", "failinimi"]].drop_duplicates("PID")
-
-    df_table = df_table.drop(columns=["failinimi"], errors="ignore")
-    df_table = df_table.merge(filenames, on="PID", how="left")
-
-if not people_df.empty and "Isik" in people_df.columns:
-    people_table = (
-        people_df[["PID", "Isik"]]
-        .dropna()
-        .drop_duplicates()
-        .groupby("PID")["Isik"]
-        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
-        .reset_index()
-        .rename(columns={"Isik": "Isik pildil"})
-    )
-
-    df_table = df_table.drop(columns=["Isik pildil"], errors="ignore")
-    df_table = df_table.merge(people_table, on="PID", how="left")
-
-if not marksoned.empty and "Märksõna" in marksoned.columns:
-    keywords_table = (
-        marksoned[["PID", "Märksõna"]]
-        .dropna()
-        .drop_duplicates()
-        .groupby("PID")["Märksõna"]
-        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
-        .reset_index()
-        .rename(columns={"Märksõna": "ERA märksõnad"})
-    )
-
-    df_table = df_table.drop(columns=["ERA märksõnad"], errors="ignore")
-    df_table = df_table.merge(keywords_table, on="PID", how="left")
-
-if not marksona_kategooriad.empty and "Kategooria" in marksona_kategooriad.columns:
-    categories_table = (
-        marksona_kategooriad[["PID", "Kategooria"]]
-        .dropna()
-        .drop_duplicates()
-        .groupby("PID")["Kategooria"]
-        .apply(lambda x: ", ".join(sorted(set(x.astype(str)))))
-        .reset_index()
-        .rename(columns={"Kategooria": "Märksõna kategooria"})
-    )
-
-    df_table = df_table.drop(columns=["Märksõna kategooria"], errors="ignore")
-    df_table = df_table.merge(categories_table, on="PID", how="left")
-
+            
 with tab6:
   #ANDMETABEL
     st.subheader("Andmetabel")
