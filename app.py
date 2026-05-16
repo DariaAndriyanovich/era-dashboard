@@ -1997,9 +1997,6 @@ with tab2:
                 set(counts["kaardi_piirkond"]) - set(geo_names)
             )
 
-            # kuvab puuduvad piirkonnad kontrollimiseks
-            st.write(missing_regions)
-
             # kontroll,
             # kas kaardile jäi midagi kuvada
             if geo_c.empty:
