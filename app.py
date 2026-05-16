@@ -268,13 +268,16 @@ df["kaardi_piirkond"] = (
 
 # LAEN ISIKUD FOTOL TABELI
 
+# fotodel olevate isikute tabeli laadimine
 people_df = pd.read_excel(
     "ERA_fotod_250426.xlsx",
     sheet_name="isikud_fotol_pikk"
 )
 
+# veerunimede puhastamine
 people_df.columns = people_df.columns.str.strip()
 
+# PID väärtuste ühtlustamine
 people_df["PID"] = (
     people_df["PID"]
     .astype(str)
@@ -285,13 +288,20 @@ people_df["PID"] = (
 with tab1:
 
     ### ANDMED ###
+
+    # SSL kontrolli lõdvendamine failide laadimiseks
     ssl._create_default_https_context = ssl._create_unverified_context
 
+    # Exceli faili asukoht
     xlsx_path = "ERA_fotod_250426.xlsx"
 
+    # avalehe pealkiri
     st.title("ERA Fotoarhiivi analüütiline juhtlaud")
+
+    # projekti lühikirjeldus
     st.caption("Kultuuriandmete projekt · University of Tartu")
 
+    # dashboardi sissejuhatav kirjeldus
     st.markdown("""
     Käesolev interaktiivne juhtlaud võimaldab uurida Eesti Rahvaluule Arhiivi (ERA) fotoarhiivi ruumilisi, ajalisi ja temaatilisi mustreid.
 
@@ -307,7 +317,9 @@ with tab1:
     Juhtlaud on loodud kultuuriandmete projekti raames eesmärgiga pakkuda visuaalseid tööriistu kultuuripärandi andmete uurimiseks.
     """)
 
+    # eraldusjoon
     st.markdown("---")
+    
     #### SIDE BAR ###
     st.sidebar.header("Filtrid")
 
