@@ -194,6 +194,21 @@ df["kaardi_piirkond"] = (
     .str.strip()
 )
 
+# LAEN ISIKUD FOTOL TABELI
+
+people_df = pd.read_excel(
+    "ERA_fotod_250426.xlsx",
+    sheet_name="isikud_fotol_pikk"
+)
+
+people_df.columns = people_df.columns.str.strip()
+
+people_df["PID"] = (
+    people_df["PID"]
+    .astype(str)
+    .str.strip()
+)
+
 
 with tab1:
 
@@ -268,28 +283,32 @@ with tab1:
         df = df[df["Koht täpsemalt"].isin(selected_places)]
 
         #### KUJUTATUD ANDMED ###
-
     # FOTOGRAAF SIDEBAR
+
     filtered_pids = df["PID"].astype(str).str.strip().unique()
 
-    master_filtered_photographers = master[
-        master["PID"].astype(str).str.strip().isin(filtered_pids)
+    people_filtered_photographers = people_df[
+        people_df["PID"].astype(str).str.strip().isin(filtered_pids)
     ].copy()
 
     all_photographers = sorted(
-        master_filtered_photographers["Fotograaf (puhastatud)"]
+        people_filtered_photographers["Fotograaf"]
         .dropna()
         .astype(str)
+        .str.strip()
         .unique()
     )
 
-    selected_photographers = st.sidebar.multiselect("Fotograaf", all_photographers)
+    selected_photographers = st.sidebar.multiselect(
+        "Fotograaf",
+        all_photographers
+    )
 
     if selected_photographers:
 
         selected_pids = (
-            master_filtered_photographers[
-                master_filtered_photographers["Fotograaf (puhastatud)"].isin(
+            people_filtered_photographers[
+                people_filtered_photographers["Fotograaf"].isin(
                     selected_photographers
                 )
             ]["PID"]
@@ -297,15 +316,13 @@ with tab1:
             .str.strip()
         )
 
-        df = df[df["PID"].astype(str).str.strip().isin(selected_pids)]
+        df = df[
+            df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(selected_pids)
+        ]
 
-    # LAEN ISIKUD FOTOL TABELI
-
-    people_df = pd.read_excel("ERA_fotod_250426.xlsx", sheet_name="isikud_fotol_pikk")
-
-    people_df.columns = people_df.columns.str.strip()
-
-    people_df["PID"] = people_df["PID"].astype(str).str.strip()
 
     # ISIK FOTOL SIDEBAR
 
@@ -2796,6 +2813,80 @@ with tab5:
 
         st.markdown("---")
 
+        # ══════════════════ CLIP KVALITEET KATEGOORIATE KAUPA ═══════════════════════
+
+    if not ml_metrics.empty:
+
+        st.subheader("📊 CLIP mudeli kvaliteet kategooriate kaupa")
+
+        st.markdown("""
+    See graafik näitab, milliste märksõnakategooriate puhul töötab CLIP mudel paremini.
+    Mida kõrgem väärtus, seda täpsemalt suutis mudel vastavat kategooriat ennustada.
+    """)
+
+        mtr = ml_metrics.copy()
+
+        mtr.columns = (
+            mtr.columns
+            .astype(str)
+            .str.strip()
+        )
+
+        mc2 = next(
+            (
+                c for c in [
+                    "f1_top3",
+                    "top3_f1",
+                    "hit_any_top3",
+                    "top3_hit_rate"
+                ]
+                if c in mtr.columns
+            ),
+            None
+        )
+
+        cc3 = next(
+            (
+                c for c in [
+                    "cluster",
+                    "kategooria",
+                    "Märksõna kategooria"
+                ]
+                if c in mtr.columns
+            ),
+            None
+        )
+
+        if mc2 and cc3:
+
+            mtr[mc2] = pd.to_numeric(
+                mtr[mc2],
+                errors="coerce"
+            )
+
+            fig = px.bar(
+
+                mtr.dropna(subset=[mc2]).sort_values(mc2),
+
+                x=mc2,
+                y=cc3,
+
+                orientation="h",
+
+                title="Milliste kategooriate puhul CLIP paremini töötab?"
+            )
+
+            fig.update_layout(
+                height=550
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+# ═════════════════════════════════════════════════════════════════════════════
+
         # TABEL
         st.subheader("ML tulemuste tabel")
 
@@ -3150,46 +3241,6 @@ with tab6:
     st.caption(
         "Koordinaatide olemasolu võimaldab kasutada "
         "ruumilist ja kaardipõhist analüüsi."
-    )
-
-    # TOP FOTOGRAAFID
-    st.markdown("---")
-    st.subheader("Kõige sagedasemad fotograafid")
-
-    top_fotograafid = (
-        df_table["Fotograaf"]
-        .dropna()
-        .astype(str)
-        .str.split(", ")
-        .explode()
-        .value_counts()
-        .head(10)
-        .reset_index()
-    )
-
-    top_fotograafid.columns = ["Fotograaf", "Fotode arv"]
-
-    fig_foto = px.bar(
-        top_fotograafid,
-        x="Fotode arv",
-        y="Fotograaf",
-        orientation="h",
-        color="Fotode arv",
-        color_continuous_scale="Tealgrn",
-    )
-
-    fig_foto.update_layout(
-        height=500,
-        yaxis=dict(categoryorder="total ascending"),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-    )
-
-    st.plotly_chart(fig_foto, use_container_width=True)
-
-    st.info(
-        "Enamik fotosid pärineb Setumaa ja Lõuna-Eesti piirkondadest. "
-        "Andmestikus domineerivad 1950.–1960. aastate fotod."
     )
 
     # PUUDUVAD ANDMED
