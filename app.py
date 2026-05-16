@@ -287,7 +287,7 @@ people_df["PID"] = (
 
 with tab1:
 
-    ### ANDMED ###
+    #ANDMED
 
     # SSL kontrolli lõdvendamine failide laadimiseks
     ssl._create_default_https_context = ssl._create_unverified_context
@@ -319,61 +319,127 @@ with tab1:
 
     # eraldusjoon
     st.markdown("---")
-    
-    #### SIDE BAR ###
+
+    # SIDE BAR
+
+    # filtrite ploki pealkiri
     st.sidebar.header("Filtrid")
 
     # FILTRITE EEMALDAMINE
+
+    # nupp kõikide aktiivsete filtrite lähtestamiseks
     if st.sidebar.button("Eemalda kõik filtrid"):
+
+        # taastab kogu aastavahemiku
         st.session_state["year_range"] = (
             int(df["Aasta"].min()),
             int(df["Aasta"].max()),
         )
+
+        # eemaldab kihelkonna filtri
         st.session_state["kihelkond_filter"] = []
+
+        # eemaldab asukoha filtri
         st.session_state["asukoht_filter"] = []
+
+        # laeb rakenduse uuesti
         st.rerun()
 
     # AASTA SIDEBAR
+
+    # minimaalse ja maksimaalse aasta leidmine
     year_min = int(df["Aasta"].dropna().min())
     year_max = int(df["Aasta"].dropna().max())
 
+    # aastavahemiku slider sidebaris
     year_range = st.sidebar.slider(
-        "Aasta", year_min, year_max, (year_min, year_max), key="year_range"
+        "Aasta",
+        year_min,
+        year_max,
+        (year_min, year_max),
+        key="year_range"
     )
 
+    # andmete filtreerimine valitud aastavahemiku järgi
     df = df[
-        ((df["Aasta"] >= year_range[0]) & (df["Aasta"] <= year_range[1]))
-        | (df["Aasta"].isna())
+        (
+            (df["Aasta"] >= year_range[0])
+            &
+            (df["Aasta"] <= year_range[1])
+        )
+        |
+        (df["Aasta"].isna())
     ]
 
     # KIHELKOND SIDEBAR
+
+    # kihelkondade valik sidebaris
     selected = st.sidebar.multiselect(
         "Kihelkond",
-        sorted(df["Kihelkond"].dropna().astype(str).unique()),
+
+        # unikaalsete kihelkondade nimekiri
+        sorted(
+            df["Kihelkond"]
+            .dropna()
+            .astype(str)
+            .unique()
+        ),
+
         key="kihelkond_filter",
     )
 
+    # andmete filtreerimine valitud kihelkondade järgi
     if selected:
-        df = df[df["Kihelkond"].isin(selected)]
+
+        df = df[
+            df["Kihelkond"].isin(selected)
+        ]
 
     # ASUKOHT SIDEBAR
+
+    # asulate valik sidebaris
     selected_places = st.sidebar.multiselect(
         "Asula",
-        sorted(df["asula"].dropna().astype(str).unique()),
+
+        # unikaalsete asulate nimekiri
+        sorted(
+            df["asula"]
+            .dropna()
+            .astype(str)
+            .unique()
+        ),
+
         key="asukoht_filter",
     )
 
+    # andmete filtreerimine valitud asulate järgi
     if selected_places:
-        df = df[df["asula"].isin(selected_places)] #### KUJUTATUD ANDMED ###
+
+        df = df[
+            df["asula"].isin(selected_places)
+        ]
+
+    #### KUJUTATUD ANDMED ###
 
     # FOTOGRAAF SIDEBAR
 
-    filtered_pids = df["PID"].astype(str).str.strip().unique()
+    # hetkel filtreeritud PID väärtused
+    filtered_pids = (
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
 
+    # ainult nende fotodega seotud isikute tabel
     people_filtered_photographers = people_df[
-        people_df["PID"].astype(str).str.strip().isin(filtered_pids)
+        people_df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(filtered_pids)
     ].copy()
 
+    # kõik unikaalsed fotograafid
     all_photographers = sorted(
         people_filtered_photographers["Fotograaf"]
         .dropna()
@@ -382,13 +448,16 @@ with tab1:
         .unique()
     )
 
+    # fotograafi valik sidebaris
     selected_photographers = st.sidebar.multiselect(
         "Fotograaf",
         all_photographers
     )
 
+    # filtreerimine valitud fotograafide järgi
     if selected_photographers:
 
+        # leitakse kõik valitud fotograafidega seotud PID-id
         selected_pids = (
             people_filtered_photographers[
                 people_filtered_photographers["Fotograaf"].isin(
@@ -399,6 +468,7 @@ with tab1:
             .str.strip()
         )
 
+        # jäetakse alles ainult valitud fotograafide fotod
         df = df[
             df["PID"]
             .astype(str)
@@ -406,163 +476,336 @@ with tab1:
             .isin(selected_pids)
         ]
 
-
     # ISIK FOTOL SIDEBAR
 
-    filtered_pids = df["PID"].astype(str).str.strip().unique()
+    # hetkel filtreeritud PID väärtused
+    filtered_pids = (
+        df["PID"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
 
+    # ainult filtreeritud fotodega seotud isikud
     people_filtered = people_df[
-        people_df["PID"].astype(str).str.strip().isin(filtered_pids)
+        people_df["PID"]
+        .astype(str)
+        .str.strip()
+        .isin(filtered_pids)
     ].copy()
 
-    all_people = sorted(people_filtered["Isik"].dropna().astype(str).unique())
+    # kõik unikaalsed isikud
+    all_people = sorted(
+        people_filtered["Isik"]
+        .dropna()
+        .astype(str)
+        .unique()
+    )
 
-    selected_people = st.sidebar.multiselect("Isik fotol", all_people)
+    # isikute valik sidebaris
+    selected_people = st.sidebar.multiselect(
+        "Isik fotol",
+        all_people
+    )
 
+    # filtreerimine valitud isikute järgi
     if selected_people:
 
+        # leitakse kõik valitud isikutega seotud PID-id
         selected_pids = (
-            people_filtered[people_filtered["Isik"].isin(selected_people)]["PID"]
+            people_filtered[
+                people_filtered["Isik"].isin(selected_people)
+            ]["PID"]
             .astype(str)
             .str.strip()
         )
 
-        df = df[df["PID"].astype(str).str.strip().isin(selected_pids)]
+        # jäetakse alles ainult valitud isikutega fotod
+        df = df[
+            df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(selected_pids)
+        ]
 
     # MÄRKSÕNADE LAADIMINE
+
+    # funktsioon märksõnade tabeli laadimiseks
     @st.cache_data
     def load_marksonad(xlsx_path):
 
         try:
 
-            marksoned = pd.read_excel(xlsx_path, sheet_name="märksõnad_pikk")
+            # märksõnade tabeli laadimine Excelist
+            marksoned = pd.read_excel(
+                xlsx_path,
+                sheet_name="märksõnad_pikk"
+            )
 
+        # kui tabelit ei leita, tagastatakse tühi dataframe
         except Exception:
 
-            return pd.DataFrame(columns=["PID", "Märksõna"])
+            return pd.DataFrame(
+                columns=["PID", "Märksõna"]
+            )
 
-        marksoned.columns = marksoned.columns.astype(str).str.strip()
+        # veerunimede puhastamine
+        marksoned.columns = (
+            marksoned.columns
+            .astype(str)
+            .str.strip()
+        )
 
+        # puuduv PID veerg luuakse vajadusel
         if "PID" not in marksoned.columns:
+
             marksoned["PID"] = pd.NA
 
+        # puuduv märksõna veerg luuakse vajadusel
         if "Märksõna" not in marksoned.columns:
+
             marksoned["Märksõna"] = pd.NA
 
-        marksoned["PID"] = marksoned["PID"].fillna("").astype(str).str.strip()
+        # PID väärtuste puhastamine
+        marksoned["PID"] = (
+            marksoned["PID"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
-        marksoned["Märksõna"] = marksoned["Märksõna"].fillna("").astype(str).str.strip()
+        # märksõnade puhastamine
+        marksoned["Märksõna"] = (
+            marksoned["Märksõna"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
-        marksoned = marksoned[marksoned["Märksõna"] != ""]
+        # eemaldatakse tühjad märksõnad
+        marksoned = marksoned[
+            marksoned["Märksõna"] != ""
+        ]
 
+        # tagastatakse puhastatud märksõnade tabel
         return marksoned
 
     # MÄRKSÕNADE KATEGOORIAD
+
+    # funktsioon märksõnade kategooriate laadimiseks
     @st.cache_data
     def load_marksona_kategooriad():
 
         try:
 
-            ml_df = pd.read_excel("ERA_märksõnad_ML.xlsx")
+            # ML märksõnade faili laadimine
+            ml_df = pd.read_excel(
+                "ERA_märksõnad_ML.xlsx"
+            )
 
+        # kui faili ei leita, tagastatakse tühi dataframe
         except Exception:
 
-            return pd.DataFrame(columns=["Märksõna", "Kategooria"])
+            return pd.DataFrame(
+                columns=["Märksõna", "Kategooria"]
+            )
 
-        ml_df.columns = ml_df.columns.astype(str).str.strip()
+        # veerunimede puhastamine
+        ml_df.columns = (
+            ml_df.columns
+            .astype(str)
+            .str.strip()
+        )
+
+        # puuduv PID veerg luuakse vajadusel
         if "PID" not in ml_df.columns:
+
             ml_df["PID"] = pd.NA
 
+        # puuduv märksõna veerg luuakse vajadusel
         if "Märksõna" not in ml_df.columns:
+
             ml_df["Märksõna"] = pd.NA
 
+        # puuduv kategooria veerg luuakse vajadusel
         if "Märksõna2" not in ml_df.columns:
+
             ml_df["Märksõna2"] = pd.NA
 
-        ml_df = ml_df.rename(columns={"Märksõna2": "Kategooria"})
+        # kategooria veeru ümbernimetamine
+        ml_df = ml_df.rename(
+            columns={
+                "Märksõna2": "Kategooria"
+            }
+        )
 
-        ml_df["PID"] = ml_df["PID"].fillna("").astype(str).str.strip()
+        # PID väärtuste puhastamine
+        ml_df["PID"] = (
+            ml_df["PID"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
-        ml_df["Märksõna"] = ml_df["Märksõna"].fillna("").astype(str).str.strip()
+        # märksõnade puhastamine
+        ml_df["Märksõna"] = (
+            ml_df["Märksõna"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
-        ml_df["Kategooria"] = ml_df["Kategooria"].fillna("").astype(str).str.strip()
+        # kategooriate puhastamine
+        ml_df["Kategooria"] = (
+            ml_df["Kategooria"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
-        ml_df = ml_df[(ml_df["Märksõna"] != "") & (ml_df["Kategooria"] != "")]
+        # eemaldatakse tühjad märksõnad ja kategooriad
+        ml_df = ml_df[
+            (ml_df["Märksõna"] != "")
+            &
+            (ml_df["Kategooria"] != "")
+        ]
 
+        # tagastatakse puhastatud kategooriate tabel
         return ml_df
 
     # MÄRKSÕNADE VALIKUD
 
+    # funktsioon sidebari märksõnade valikute loomiseks
     def get_marksona_options(marksoned, current_df=None):
 
+        # kontrollitakse, kas olemas on filtreeritud dataframe
         if current_df is not None and "PID" in current_df.columns:
 
-            current_pids = set(current_df["PID"].dropna().astype(str).unique())
-
-            filtered_marksoned = marksoned[marksoned["PID"].isin(current_pids)]
-
-        else:
-            filtered_marksoned = marksoned
-
-        options = (
-            filtered_marksoned["Märksõna"]
-            .dropna()
-            .astype(str)
-            .value_counts()
-            .index.tolist()
-        )
-
-        return options
-
-    # MÄRKSÕNADE FILTREERIMINE
-
-    def filter_by_marksonad(fotod_df, marksoned_df, selected_marksonad, logic="OR"):
-
-        if not selected_marksonad:
-            return fotod_df
-
-        if logic == "OR":
-
-            matched_pids = set(
-                marksoned_df[marksoned_df["Märksõna"].isin(selected_marksonad)]["PID"]
+            # hetkel aktiivsete PID väärtuste kogumine
+            current_pids = set(
+                current_df["PID"]
                 .dropna()
                 .astype(str)
                 .unique()
             )
 
+            # märksõnade filtreerimine aktiivsete PID-ide järgi
+            filtered_marksoned = marksoned[
+                marksoned["PID"].isin(current_pids)
+            ]
+
+        else:
+
+            # kasutatakse kogu märksõnade tabelit
+            filtered_marksoned = marksoned
+
+        # märksõnade nimekirja loomine sageduse järgi
+        options = (
+            filtered_marksoned["Märksõna"]
+            .dropna()
+            .astype(str)
+            .value_counts()
+            .index
+            .tolist()
+        )
+
+        # tagastatakse märksõnade valikud
+        return options
+
+
+        # MÄRKSÕNADE FILTREERIMINE
+
+    # funktsioon fotode filtreerimiseks märksõnade järgi
+    def filter_by_marksonad(
+        fotod_df,
+        marksoned_df,
+        selected_marksonad,
+        logic="OR"
+    ):
+
+        # kui märksõnu ei valitud, tagastatakse kogu dataframe
+        if not selected_marksonad:
+
+            return fotod_df
+
+        # OR loogika:
+        # foto peab sisaldama vähemalt ühte valitud märksõna
+        if logic == "OR":
+
+            matched_pids = set(
+
+                marksoned_df[
+                    marksoned_df["Märksõna"]
+                    .isin(selected_marksonad)
+                ]["PID"]
+
+                .dropna()
+                .astype(str)
+                .unique()
+            )
+
+        # AND loogika:
+        # foto peab sisaldama kõiki valitud märksõnu
         else:
 
             matched_pids = None
 
+            # vaadatakse iga märksõna eraldi
             for keyword in selected_marksonad:
 
+                # leitakse kõik PID-id,
+                # kus see märksõna esineb
                 keyword_pids = set(
-                    marksoned_df[marksoned_df["Märksõna"] == keyword]["PID"]
+
+                    marksoned_df[
+                        marksoned_df["Märksõna"] == keyword
+                    ]["PID"]
+
                     .dropna()
                     .astype(str)
                     .unique()
                 )
 
+                # esimese märksõna PID-id
                 if matched_pids is None:
-                    matched_pids = keyword_pids
-                else:
-                    matched_pids = matched_pids & keyword_pids
 
+                    matched_pids = keyword_pids
+
+                # leitakse ühised PID-id
+                else:
+
+                    matched_pids = (
+                        matched_pids
+                        &
+                        keyword_pids
+                    )
+
+            # kui vasteid ei leitud
             if matched_pids is None:
+
                 matched_pids = set()
 
-        filtered_df = fotod_df[fotod_df["PID"].astype(str).isin(matched_pids)]
+        # jäetakse alles ainult sobivad fotod
+        filtered_df = fotod_df[
+            fotod_df["PID"]
+            .astype(str)
+            .isin(matched_pids)
+        ]
 
+        # tagastatakse filtreeritud dataframe
         return filtered_df
 
-    # MÄRKSÕNADE SIDEBAR
+        # MÄRKSÕNADE SIDEBAR
 
+    # märksõnade filtri pealkiri sidebaris
     st.sidebar.markdown("## Märksõnad")
 
+    # märksõnade tabeli laadimine
     marksoned = load_marksonad(xlsx_path)
 
+    # märksõnade kategooriate tabeli laadimine
     marksona_kategooriad = load_marksona_kategooriad()
-
+    
     # KATEGOORIA FILTER
     filtered_pids = set(df["PID"].dropna().astype(str).unique())
 
