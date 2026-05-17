@@ -2197,6 +2197,448 @@ with tab2:
                 except Exception:
                     pass
 
+                  # DETAIL VIEW
+    else:
+
+        # saab kätte kasutaja valitud kihelkonna
+        val = st.session_state["valitud_kihelkond"]
+
+        # kui kihelkonda pole valitud,
+        # suunatakse tagasi üldvaatele
+        if not val:
+
+            st.session_state["kaart_vaade"] = "overview"
+
+            st.rerun()
+
+        # nupp tagasi üldkaardile
+        if st.button("← Tagasi üldkaardile"):
+
+            st.session_state["kaart_vaade"] = "overview"
+
+            st.session_state["valitud_kihelkond"] = None
+
+            st.rerun()
+
+        # kuvab detailvaates kihelkonna nime
+        st.subheader(f" {val}")
+
+        # teeb andmetest koopia detailvaate jaoks
+        detail_df = df.copy()
+
+        # ühtlustab piirkondade nimed,
+        # et kaardifilter töötaks korrektselt
+        detail_df["kaardi_piirkond"] = (
+            detail_df["kaardi_piirkond"]
+            .astype(str)
+            .str.strip()
+            .replace({
+                "Tartu linn": "Tartu",
+                "Tallinna linn": "Tallinn",
+                "Petseri": "Petserimaa"
+            })
+        )
+
+        # filtreerib välja ainult valitud piirkonna andmed
+        det = detail_df[
+            detail_df["kaardi_piirkond"]
+            .astype(str)
+            .str.strip()
+            == val
+        ].copy()
+
+        # kontrollib,
+        # millistel fotodel on olemas koordinaadid
+        ok = (
+            det["Latitude"].notna()
+            &
+            det["Longitude"].notna()
+        )
+
+        # KPI NÄITAJAD
+        k1, k2, k3, k4 = st.columns(4)
+
+        # kuvab piirkonna fotode arvu
+        k1.metric(
+            "Fotosid",
+            len(det)
+        )
+
+        # kuvab koordinaatidega fotode arvu
+        k2.metric(
+            "Koordinaatidega",
+            int(ok.sum())
+        )
+
+        # leiab piirkonna fotode ajavahemiku
+        k3.metric(
+            "Ajavahemik",
+
+            (
+                f"{int(det['Aasta'].min())}"
+                f"–"
+                f"{int(det['Aasta'].max())}"
+            )
+
+            if (
+                "Aasta" in det.columns
+                and det["Aasta"].notna().any()
+            )
+
+            else "?"
+        )
+
+        # leiab piirkonnaga seotud PID-id
+        det_pids = (
+            det["PID"]
+            .astype(str)
+            .str.strip()
+            .unique()
+        )
+
+        # valib ainult nende PID-idega seotud fotograafid
+        det_photographers = people_df[
+            people_df["PID"]
+            .astype(str)
+            .str.strip()
+            .isin(det_pids)
+        ]
+
+        # loeb kokku unikaalsed fotograafid
+        photographer_count = (
+            det_photographers["Fotograaf"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .nunique()
+        )
+
+        # kuvab fotograafide arvu
+        k4.metric(
+            "Fotograafe",
+            photographer_count
+        )
+
+        # jätab alles ainult koordinaatidega fotod
+        pts = det[ok].copy()
+
+        # nimetab koordinaadiveerud ümber,
+        # et neid oleks kaardil mugavam kasutada
+        pts = pts.rename(
+            columns={
+                "Latitude": "_lat",
+                "Longitude": "_lon"
+            }
+        )
+
+        # kontrollib,
+        # kas kaardile on võimalik punkte kuvada
+        if not pts.empty:
+
+            # leiab kaardi keskpunkti
+            center = centroids.get(
+                val,
+                (
+                    pts["_lat"].median(),
+                    pts["_lon"].median()
+                )
+            )
+
+            # määrab hoveri infos kuvatavad veerud
+            hover_cols = [
+                c for c in [
+                    "Aasta",
+                    "Fotograaf",
+                    "Žanr",
+                    "Koht täpsemalt"
+                ]
+
+                if c in pts.columns
+            ]
+
+            # loob hoveri jaoks info teksti
+            pts["_hover"] = pts.apply(
+                lambda r: build_hover(r, hover_cols),
+                axis=1
+            )
+
+            # kasutab sisu kirjeldust hoveri pealkirjana
+            title_col = (
+                "Sisu kirjeldus"
+                if "Sisu kirjeldus" in pts.columns
+                else None
+            )
+
+            # DETAILKAARDI LOOMINE
+            fig_d = go.Figure(
+
+                go.Scattermapbox(
+
+                    lat=pts["_lat"],
+
+                    lon=pts["_lon"],
+
+                    mode="markers",
+
+                    marker=dict(
+                        size=10,
+                        opacity=0.85,
+                        color="#e63946"
+                    ),
+
+                    customdata=(
+                        pts[[title_col]].fillna("")
+                        if title_col
+                        else None
+                    ),
+
+                    text=pts["_hover"],
+
+                    hovertemplate=(
+
+                        "<b>%{customdata[0]}</b><br>"
+                        "%{text}<extra></extra>"
+
+                        if title_col
+
+                        else "%{text}<extra></extra>"
+                    )
+                )
+            )
+
+            # leiab geojsonist valitud kihelkonna piiri
+            kihel_feat = [
+
+                f for f in geojson["features"]
+
+                if (
+                    f.get("properties", {})
+                    .get("KIHELKOND")
+                    == val
+                )
+            ]
+
+            # joonistab piirkonna piiri detailkaardile
+            if kihel_feat:
+
+                for ring in poly_rings(
+
+                    kihel_feat[0]
+                    .get("geometry", {})
+                ):
+
+                    lons = [
+                        c[0]
+                        for c in ring
+                        if len(c) >= 2
+                    ]
+
+                    lats = [
+                        c[1]
+                        for c in ring
+                        if len(c) >= 2
+                    ]
+
+                    fig_d.add_trace(
+
+                        go.Scattermapbox(
+
+                            lon=lons,
+
+                            lat=lats,
+
+                            mode="lines",
+
+                            line=dict(
+                                color="rgba(20,20,20,0.9)",
+                                width=2
+                            ),
+
+                            hoverinfo="skip",
+
+                            showlegend=False
+                        )
+                    )
+
+            # määrab detailkaardi kujunduse ja keskpunkti
+            fig_d.update_layout(
+
+                mapbox=dict(
+
+                    style="open-street-map",
+
+                    zoom=10,
+
+                    center={
+                        "lat": center[0],
+                        "lon": center[1]
+                    }
+                ),
+
+                height=500,
+
+                margin={
+                    "r": 0,
+                    "t": 10,
+                    "l": 0,
+                    "b": 0
+                },
+
+                showlegend=False
+            )
+
+            # kuvab detailkaardi streamlitis
+            st.plotly_chart(
+                fig_d,
+                use_container_width=True
+            )
+
+        # kui piirkonnas pole koordinaatidega fotosid,
+        # kuvatakse kasutajale teade
+        else:
+
+            st.info(
+                "Sellel piirkonnal koordinaatidega fotosid ei ole."
+            )
+
+        # loob kaks veergu tabelite jaoks
+        col1, col2 = st.columns(2)
+
+    # FOTOGRAAFIDE TABEL
+        with col1:
+
+          # leiab piirkonna PID-id
+          det_pids = (
+              det["PID"]
+              .astype(str)
+              .str.strip()
+              .unique()
+          )
+
+          # filtreerib välja piirkonnaga seotud fotograafid
+          det_photographers = people_df[
+              people_df["PID"]
+              .astype(str)
+              .str.strip()
+              .isin(det_pids)
+          ]
+
+          # arvutab kõige sagedasemad fotograafid
+          ft = (
+
+              det_photographers
+
+              .dropna(subset=["Fotograaf", "PID"])
+
+              .assign(
+                  Fotograaf=lambda x:
+                  x["Fotograaf"]
+                  .astype(str)
+                  .str.strip()
+              )
+
+              .groupby("Fotograaf")["PID"]
+
+              .nunique()
+
+              .sort_values(ascending=False)
+
+              .head(8)
+
+              .reset_index(name="Arv")
+          )
+
+          ft.columns = [
+              "Fotograaf",
+              "Arv"
+          ]
+
+          # kuvab fotograafide tabeli
+          if not ft.empty:
+
+              st.markdown("### Fotograafid")
+
+              st.dataframe(
+                  ft,
+                  hide_index=True,
+                  use_container_width=True
+              )
+
+        # TOP MÄRKSÕNADE TABEL
+        with col2:
+
+            # kontrollib,
+            # kas märksõnade andmed on olemas
+            if (
+                not marksoned.empty
+                and "Märksõna" in marksoned.columns
+            ):
+
+                # leiab piirkonna kõige sagedasemad märksõnad
+                ms_d = (
+
+                    clean_series(
+
+                        marksoned[
+                            marksoned["PID"]
+                            .isin(det["PID"])
+                        ]["Märksõna"]
+
+                    )
+
+                    .value_counts()
+
+                    .head(8)
+
+                    .reset_index()
+                )
+
+                ms_d.columns = [
+                    "Märksõna",
+                    "Arv"
+                ]
+
+                # kuvab top märksõnade tabeli
+                if not ms_d.empty:
+
+                    st.markdown("### Top märksõnad")
+
+                    st.dataframe(
+                        ms_d,
+                        hide_index=True,
+                        use_container_width=True
+                    )
+
+        # KÕIKIDE FOTODE DETAILNE TABEL
+        with st.expander(
+            "Vaata kõiki fotosid sellest piirkonnast"
+        ):
+
+            # valib tabelis kuvatavad veerud
+            d_cols = [
+
+                c for c in [
+
+                    "PID",
+                    "Aasta",
+                    "Fotograaf",
+                    "Žanr",
+                    "Sisu kirjeldus",
+                    "Koht täpsemalt",
+                    "failinimi"
+
+                ]
+
+                if c in det.columns
+            ]
+
+            # kuvab piirkonna fotode tabeli
+            st.dataframe(
+                clean_df(det[d_cols]).head(500),
+                use_container_width=True,
+                hide_index=True
+            )
+
 # MÄRKSÕNADE ANALÜÜSI TAB
 with tab3:
 
